@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CEX Арбитраж · USDT спреды</title>
+<style>
+:root {
+  --bg:#07101f; --bg2:#0b1628; --bg3:#0f1e35; --bg4:#132542;
+  --border:rgba(80,140,255,0.12); --border2:rgba(80,140,255,0.25);
+  --text:#ddeeff; --text2:#6a96c8; --text3:#304f72;
+  --green:#1eff9a; --green2:#10c870; --yellow:#ffd060; --red:#ff5f5f; --accent:#4da6ff;
+  --mono:'JetBrains Mono','Fira Code','Courier New',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:13px;min-height:100vh}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid var(--border2);background:var(--bg2);position:sticky;top:0;z-index:10}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.logo-text{font-size:14px;font-weight:700;letter-spacing:.1em}
+.logo-sub{font-size:11px;color:var(--text3);margin-top:1px}
+.topbar-right{display:flex;align-items:center;gap:10px}
+.rbtn{background:none;border:1px solid var(--border2);color:var(--text2);padding:7px 14px;border-radius:6px;cursor:pointer;font-family:var(--mono);font-size:12px;display:flex;align-items:center;gap:6px;transition:all .2s}
+.rbtn:hover{border-color:var(--green);color:var(--green)}
+.rbtn:disabled{opacity:.4;cursor:not-allowed}
+.rbtn .spin{display:none;animation:spin 1s linear infinite}
+.rbtn.loading .spin{display:inline}
+.rbtn.loading .ico{display:none}
+@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+.timer-badge{font-size:11px;color:var(--text2);padding:5px 10px;border:1px solid var(--border2);border-radius:6px}
+.wrap{max-width:1400px;margin:0 auto;padding:24px}
+
+/* Tabs */
+.tabs{display:flex;gap:2px;margin-bottom:20px;border-bottom:1px solid var(--border2)}
+.tab-btn{font-size:12px;padding:8px 18px;background:none;border:none;border-bottom:2px solid transparent;color:var(--text2);cursor:pointer;font-family:var(--mono);transition:all .15s;margin-bottom:-1px}
+.tab-btn:hover{color:var(--text)}
+.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:700}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+
+/* Stats */
+.stats{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap}
+.stat-card{flex:1;min-width:120px;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:14px 16px}
+.stat-label{font-size:10px;color:var(--text2);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px}
+.stat-val{font-size:24px;font-weight:800;color:#fff;letter-spacing:-0.02em}
+.stat-val.green{color:var(--green)}
+
+/* Progress */
+.prog-wrap{margin-bottom:20px}
+.prog-bar{height:2px;background:var(--border);border-radius:999px;overflow:hidden;margin-bottom:8px}
+.prog-fill{height:100%;background:var(--green);transition:width .4s;border-radius:999px}
+.prog-txt{font-size:11px;color:var(--text3)}
+
+/* Exchange badges */
+.exch-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px}
+.ex-badge{font-size:11px;padding:4px 10px;border-radius:999px;border:1px solid var(--border2);color:var(--text3);display:flex;align-items:center;gap:5px;transition:all .3s}
+.ex-badge.ok{border-color:var(--green2);color:var(--green);background:rgba(30,255,154,0.06)}
+.ex-badge.err{border-color:rgba(255,95,95,0.35);color:var(--red);background:rgba(255,95,95,0.06)}
+.ex-badge .dot2{width:5px;height:5px;border-radius:50%;background:currentColor}
+
+/* Controls */
+.controls{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center}
+.fb{font-size:12px;padding:6px 14px;border:1px solid var(--border2);border-radius:999px;background:none;cursor:pointer;color:var(--text2);font-family:var(--mono);transition:all .15s}
+.fb:hover{border-color:var(--accent);color:var(--accent)}
+.fb.active{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:700}
+.search-wrap{margin-left:auto}
+.search-wrap input{background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:6px 12px;border-radius:6px;font-family:var(--mono);font-size:12px;width:200px;outline:none;transition:border-color .2s}
+.search-wrap input:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(77,166,255,0.15)}
+.search-wrap input::placeholder{color:var(--text3)}
+
+/* Range filters */
+.range-row{display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.rr-label{font-size:12px;color:var(--text2)}
+.range-row input[type=number]{background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:5px 10px;border-radius:6px;font-family:var(--mono);font-size:13px;font-weight:700;width:72px;outline:none;-moz-appearance:textfield}
+.range-row input[type=number]::-webkit-outer-spin-button,
+.range-row input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
+.range-row input[type=number]:focus{border-color:var(--accent)}
+.rr-sep{width:1px;height:18px;background:rgba(80,140,255,0.25);display:inline-block;margin:0 10px;vertical-align:middle}
+.rr-reset{font-size:11px;padding:5px 10px;border:1px solid var(--border2);border-radius:6px;background:none;cursor:pointer;color:var(--text3);font-family:var(--mono);transition:all .15s}
+.rr-reset:hover{color:var(--accent);border-color:var(--accent)}
+
+/* Notice */
+.notice{background:var(--bg3);border:1px solid var(--border2);border-left:3px solid var(--accent);border-radius:8px;padding:12px 16px;margin-bottom:20px;font-size:12px;color:var(--text2);line-height:1.7}
+.notice strong{color:var(--text)}
+.notice code{background:var(--bg4);color:var(--accent);padding:1px 6px;border-radius:4px;font-family:var(--mono);font-size:11px}
+
+/* Table */
+.tbl-wrap{overflow-x:auto}
+.tbl{width:100%;border-collapse:collapse}
+.tbl thead th{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text2);padding:10px 12px;text-align:left;border-bottom:1px solid var(--border2);white-space:nowrap;font-weight:600;background:var(--bg3)}
+.tbl thead th.r{text-align:right}
+.tbl tbody tr{border-bottom:1px solid var(--border);transition:background .15s}
+.tbl tbody tr:hover{background:var(--bg2)}
+.tbl tbody td{padding:11px 12px;vertical-align:middle;white-space:nowrap}
+.tbl tbody td.r{text-align:right}
+.rn{color:var(--text3);font-size:12px;font-weight:500}
+.pair{font-size:14px;font-weight:800;color:#fff;letter-spacing:.01em}
+.pair-usdt{color:var(--text2);font-weight:400}
+.ex-name{font-size:12px;color:var(--accent);font-weight:600;cursor:pointer;text-decoration:underline;text-decoration-color:rgba(77,166,255,0.35);text-underline-offset:2px;transition:color .15s}
+.ex-name:hover{color:#fff;text-decoration-color:var(--accent)}
+.price-cell{font-size:13px;color:#c8deff;font-variant-numeric:tabular-nums;font-weight:700}
+.spread-cell{font-size:15px;font-weight:900;font-variant-numeric:tabular-nums;letter-spacing:-0.01em}
+.spread-cell.hot{color:var(--green)}
+.spread-cell.warm{color:var(--yellow)}
+.spread-cell.cool{color:var(--text2)}
+.profit-cell{font-size:13px;color:var(--green);font-variant-numeric:tabular-nums;font-weight:800}
+.wd-tag{font-size:9px;padding:2px 5px;background:rgba(232,75,75,.15);color:var(--red);border:1px solid rgba(232,75,75,.3);border-radius:4px;margin-left:3px}
+.loading-row td,.empty-row td{text-align:center;padding:48px;color:var(--text3);font-size:13px}
+.blink{animation:blink 1s infinite}
+@keyframes blink{0%,100%{opacity:.3}50%{opacity:1}}
+.footer{display:flex;justify-content:space-between;align-items:center;padding-top:16px;margin-top:4px;flex-wrap:wrap;gap:8px}
+.footer-note{font-size:11px;color:var(--text3)}
+.star-btn{background:none;border:none;cursor:pointer;font-size:16px;color:var(--text3);padding:0;line-height:1;transition:color .15s,transform .15s}
+.star-btn:hover{transform:scale(1.2)}
+.star-btn.active{color:var(--yellow)}
+
+/* Tooltip */
+.coin-tooltip{position:fixed;z-index:9999;background:#0b1628;border:1px solid rgba(80,140,255,0.35);border-radius:8px;padding:10px 14px;min-width:280px;box-shadow:0 8px 32px rgba(0,0,0,0.6);pointer-events:none;display:none}
+.ct-title{font-size:11px;color:#6a96c8;letter-spacing:.07em;text-transform:uppercase;margin-bottom:8px;font-weight:600}
+.ct-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid rgba(80,140,255,0.08);gap:16px;font-size:12px}
+.ct-row:last-child{border-bottom:none}
+.ct-route{color:#6a96c8}
+.ct-route strong{color:#4da6ff}
+.ct-spread{font-weight:800;font-size:13px}
+.ct-spread.hot{color:#1eff9a}
+.ct-spread.warm{color:#ffd060}
+.ct-spread.cool{color:#6a96c8}
+
+/* History & Favorites tabs */
+.hist-controls{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.hist-count{font-size:12px;color:var(--text2)}
+.hist-clear{font-size:11px;padding:5px 12px;border:1px solid var(--border2);border-radius:6px;background:none;cursor:pointer;color:var(--text3);font-family:var(--mono);transition:all .15s}
+.hist-clear:hover{color:var(--red);border-color:var(--red)}
+.hist-table{width:100%;border-collapse:collapse}
+.hist-table thead th{font-size:10px;color:var(--text3);letter-spacing:.07em;text-transform:uppercase;padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);font-weight:500;background:var(--bg3)}
+.hist-table thead th.r{text-align:right}
+.hist-table tbody tr{border-bottom:1px solid var(--border);transition:background .1s}
+.hist-table tbody tr:hover{background:var(--bg2)}
+.hist-table tbody td{padding:10px 12px;font-size:12px;color:var(--text)}
+.hist-table tbody td.r{text-align:right}
+.hist-time{font-size:11px;color:var(--text3)}
+.hist-coin{font-weight:700;color:#fff;cursor:pointer;text-decoration:underline;text-decoration-color:rgba(255,255,255,0.2);text-underline-offset:2px}
+.hist-coin:hover{color:var(--accent)}
+.hist-ex{color:var(--accent);font-weight:600;cursor:pointer}
+.hist-ex:hover{text-decoration:underline}
+.hist-empty{text-align:center;padding:3rem;color:var(--text3);font-size:13px}
+
+/* Mobile */
+@media(max-width:700px){
+  .wrap{padding:10px}
+  .topbar{padding:10px 12px}
+  .logo-sub{display:none}
+  .timer-badge{display:none}
+  .hide-m{display:none}
+  .stat-val{font-size:16px}
+  .stats{gap:8px}
+  .stat-card{min-width:80px;padding:10px 12px}
+  .search-wrap{width:100%;margin-left:0}
+  .search-wrap input{width:100%}
+  .range-row{gap:5px}
+  .range-row input[type=number]{width:55px}
+  .tbl thead{display:none}
+  .tbl tbody tr{display:flex;flex-direction:column;padding:10px 12px;margin-bottom:8px;background:var(--bg2);border-radius:8px;border:1px solid var(--border2)!important}
+  .tbl tbody td{padding:2px 0;border:none!important;white-space:normal}
+  .tbl tbody td.r{text-align:left}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">
+    <div class="logo-dot"></div>
+    <div>
+      <div class="logo-text">ARB SCANNER</div>
+      <div class="logo-sub">CEX · USDT пары · РФ биржи</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <span class="timer-badge" id="timer-badge">авто: 45с</span>
+    <button class="rbtn" id="rbtn" onclick="startScan()">
+      <span class="ico">⟳</span><span class="spin">↻</span> обновить
+    </button>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div class="tabs">
+    <button class="tab-btn active" id="tab-btn-scanner" onclick="switchTab('scanner',this)">📊 Сканер</button>
+    <button class="tab-btn" id="tab-btn-favorites" onclick="switchTab('favorites',this)">★ Избранное <span id="fav-badge"></span></button>
+    <button class="tab-btn" id="tab-btn-history" onclick="switchTab('history',this)">🕒 История <span id="hist-badge"></span></button>
+  </div>
+
+  <!-- SCANNER -->
+  <div id="tab-scanner" class="tab-panel active">
+
+    <div class="stats">
+      <div class="stat-card"><div class="stat-label">Спредов найдено</div><div class="stat-val" id="s-total">—</div></div>
+      <div class="stat-card"><div class="stat-label">Лучший спред</div><div class="stat-val green" id="s-best">—</div></div>
+      <div class="stat-card"><div class="stat-label">Пар проверено</div><div class="stat-val" id="s-pairs">—</div></div>
+      <div class="stat-card"><div class="stat-label">Биржи онлайн</div><div class="stat-val" id="s-ex">—</div></div>
+      <div class="stat-card"><div class="stat-label">Горячих &gt;1%</div><div class="stat-val green" id="s-hot">—</div></div>
+    </div>
+
+    <div class="prog-wrap" id="prog-wrap" style="display:none">
+      <div class="prog-bar"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
+      <div class="prog-txt" id="prog-txt">подключаемся...</div>
+    </div>
+
+    <div class="exch-row" id="exch-row"></div>
+
+    <div class="notice">
+      💡 Прокси: <span id="proxy-status" style="color:var(--red)">не подключён</span> — запусти <code>python proxy.py</code> и обнови страницу.
+      <br>🔴 <strong style="color:#e84b4b">⊘ вывод</strong> — вывод монеты приостановлен.
+    </div>
+
+    <div class="controls">
+      <button class="fb active" onclick="setFilter('all',this)">Все</button>
+      <button class="fb" onclick="setFilter('safe',this)">Без ограничений</button>
+      <button class="fb" onclick="setFilter('bigvol',this)">Объём &gt;$1M</button>
+      <div class="search-wrap">
+        <input type="text" id="search" placeholder="поиск: BTC, SOL, PEPE..." oninput="renderRows()">
+      </div>
+    </div>
+
+    <div class="range-row">
+      <span class="rr-label">Спред от</span>
+      <input type="number" id="spread-min" min="0" max="100" step="0.1" value="0" oninput="renderRows()">
+      <span class="rr-label">до</span>
+      <input type="number" id="spread-max" min="0" max="100" step="0.1" value="50" oninput="renderRows()">
+      <span class="rr-label">%</span>
+      <button class="rr-reset" onclick="document.getElementById('spread-min').value=0;document.getElementById('spread-max').value=50;renderRows()">сбросить</button>
+      <span class="rr-sep"></span>
+      <span class="rr-label">Объём от</span>
+      <input type="number" id="vol-min" min="0" step="1000" value="0" oninput="renderRows()" style="width:100px">
+      <span class="rr-label">до</span>
+      <input type="number" id="vol-max" min="0" step="1000" placeholder="∞" oninput="renderRows()" style="width:100px">
+      <span class="rr-label">$</span>
+      <button class="rr-reset" onclick="document.getElementById('vol-min').value=0;document.getElementById('vol-max').value='';renderRows()">сбросить</button>
+    </div>
+
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th style="width:28px"></th>
+            <th>Монета</th>
+            <th>Купить</th>
+            <th class="r">Цена</th>
+            <th style="width:4px;padding:0;border-left:2px solid rgba(80,140,255,0.25)"></th>
+            <th>Продать</th>
+            <th class="r">Цена</th>
+            <th style="width:4px;padding:0;border-left:2px solid rgba(80,140,255,0.25)"></th>
+            <th class="r">Спред</th>
+            <th class="r hide-m">Объём 24h</th>
+            <th class="r hide-m">Изм. 24h</th>
+            <th class="r hide-m">Профит $<input type="number" id="profit-base" value="1000" min="1" step="100" oninput="renderRows()" style="width:70px;background:var(--bg3);border:.5px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:11px;font-weight:700;padding:2px 4px;border-radius:4px;text-align:right;outline:none;-moz-appearance:textfield"></th>
+          </tr>
+        </thead>
+        <tbody id="tbody">
+          <tr class="loading-row"><td colspan="13"><span class="blink">●</span> загружаем данные...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="footer">
+      <div class="footer-note" id="lu">—</div>
+      <div class="footer-note">Топ-500 · спред &gt;0.15% · без учёта комиссий</div>
+    </div>
+
+  </div><!-- /scanner -->
+
+  <!-- FAVORITES -->
+  <div id="tab-favorites" class="tab-panel">
+    <div class="hist-controls">
+      <span class="hist-count" id="fav-count">0 монет</span>
+      <button class="hist-clear" onclick="clearFavorites()">очистить</button>
+    </div>
+    <div class="tbl-wrap">
+      <table class="hist-table">
+        <thead><tr>
+          <th>Монета</th><th>Купить</th><th class="r">Цена</th>
+          <th>Продать</th><th class="r">Цена</th>
+          <th class="r">Спред</th><th class="r">Объём</th><th class="r">Изм. 24h</th>
+        </tr></thead>
+        <tbody id="fav-tbody"><tr><td colspan="8" class="hist-empty">Нет избранных — нажми ★ рядом с монетой</td></tr></tbody>
+      </table>
+    </div>
+  </div><!-- /favorites -->
+
+  <!-- HISTORY -->
+  <div id="tab-history" class="tab-panel">
+    <div class="hist-controls">
+      <span class="hist-count" id="hist-count">0 записей</span>
+      <button class="hist-clear" onclick="clearHistory()">очистить историю</button>
+    </div>
+    <div class="tbl-wrap">
+      <table class="hist-table">
+        <thead><tr>
+          <th>Время</th><th style="width:28px"></th><th>Монета</th><th>Маршрут</th><th class="r">Спред</th><th>Тип</th>
+        </tr></thead>
+        <tbody id="hist-tbody"><tr><td colspan="6" class="hist-empty">История пуста — нажимай на биржи и монеты</td></tr></tbody>
+      </table>
+    </div>
+  </div><!-- /history -->
+
+</div>
+
+<div class="coin-tooltip" id="coin-tooltip"></div>
+
+<script>
+// Локально (file://) прокси всегда на localhost:8765. На сервере (http/https) — тот же домен.
+const PROXY_BASE = (location.protocol === 'file:') ? 'http://localhost:8765' : '';
+
+const EXCHANGES = [
+  {id:'bybit',  name:'Bybit'},  {id:'kucoin', name:'KuCoin'},
+  {id:'gate',   name:'Gate.io'},{id:'mexc',   name:'MEXC'},
+  {id:'okx',    name:'OKX'},    {id:'bingx',  name:'BingX'},
+  {id:'bitget', name:'Bitget'}, {id:'htx',    name:'HTX'},
+  {id:'toobit', name:'Toobit'}, {id:'phemex', name:'Phemex'},
+];
+const EXNAMES = {};
+EXCHANGES.forEach(e => EXNAMES[e.id] = e.name);
+
+const EX_URLS = {
+  bybit:  c => 'https://www.bybit.com/trade/spot/'+c+'/USDT',
+  kucoin: c => 'https://www.kucoin.com/trade/'+c+'-USDT',
+  gate:   c => 'https://www.gate.io/trade/'+c+'_USDT',
+  mexc:   c => 'https://www.mexc.com/exchange/'+c+'_USDT',
+  okx:    c => 'https://www.okx.com/trade-spot/'+c.toLowerCase()+'-usdt',
+  bingx:  c => 'https://bingx.com/en/spot/'+c+'USDT/',
+  bitget: c => 'https://www.bitget.com/spot/'+c+'USDT',
+  htx:    c => 'https://www.htx.com/trade/'+c.toLowerCase()+'_usdt/',
+  toobit: c => 'https://www.toobit.com/en-US/spot/'+c+'_USDT',
+  phemex: c => 'https://phemex.com/spot/trade/s'+c+'USDT',
+};
+
+const exStatus = {};
+EXCHANGES.forEach(e => exStatus[e.id] = 'loading');
+
+// ── Proxy ────────────────────────────────────────────────────────────────────
+let USE_PROXY = false;
+
+async function checkProxy() {
+  try {
+    const r = await fetch(PROXY_BASE+'/proxy/bybit', {signal:AbortSignal.timeout(1500)});
+    USE_PROXY = r.ok;
+  } catch { USE_PROXY = false; }
+  const el = document.getElementById('proxy-status');
+  if(el) { el.textContent = USE_PROXY ? 'подключён ✓' : 'не подключён'; el.style.color = USE_PROXY ? 'var(--green)' : 'var(--red)'; }
+}
+
+async function fetchFromProxy(exchange) {
+  try {
+    const r = await fetch(PROXY_BASE+'/proxy/'+exchange, {signal:AbortSignal.timeout(7000)});
+    return await r.json();
+  } catch { return null; }
+}
+
+
+// ── Exchange parsers ─────────────────────────────────────────────────────────
+function parseRaw(exchange, d) {
+  const out = {};
+  if(exchange==='bybit') {
+    (d?.result?.list||[]).forEach(t => {
+      if(t.symbol.endsWith('USDT')&&+t.ask1Price>0&&+t.bid1Price>0)
+        out[t.symbol.replace('USDT','')] = {ask:+t.ask1Price,bid:+t.bid1Price,vol:+t.turnover24h||0,chg:+t.price24hPcnt*100||0};
+    });
+  } else if(exchange==='kucoin') {
+    (d?.data?.ticker||[]).forEach(t => {
+      if(t.symbol.endsWith('-USDT')&&+t.buy>0&&+t.sell>0)
+        out[t.symbol.replace('-USDT','')] = {ask:+t.sell,bid:+t.buy,vol:+t.volValue||0,chg:+t.changeRate*100||0};
+    });
+  } else if(exchange==='gate') {
+    (d||[]).forEach(t => {
+      if(t.currency_pair.endsWith('_USDT')&&+t.lowest_ask>0&&+t.highest_bid>0)
+        out[t.currency_pair.replace('_USDT','')] = {ask:+t.lowest_ask,bid:+t.highest_bid,vol:+t.quote_volume||0,chg:+t.change_percentage||0};
+    });
+  } else if(exchange==='mexc') {
+    (d||[]).forEach(t => {
+      if(t.symbol.endsWith('USDT')&&+t.askPrice>0&&+t.bidPrice>0)
+        out[t.symbol.replace('USDT','')] = {ask:+t.askPrice,bid:+t.bidPrice,vol:+t.quoteVolume||0,chg:+t.priceChangePercent||0};
+    });
+  } else if(exchange==='okx') {
+    (d?.data||[]).forEach(t => {
+      if(t.instId.endsWith('-USDT')&&+t.askPx>0&&+t.bidPx>0)
+        out[t.instId.replace('-USDT','')] = {ask:+t.askPx,bid:+t.bidPx,vol:+t.volCcy24h||0,chg:+t.sodUtc8||0};
+    });
+  } else if(exchange==='bingx') {
+    (d?.data||[]).forEach(t => {
+      if(t.symbol.endsWith('-USDT')&&+t.askPrice>0&&+t.bidPrice>0)
+        out[t.symbol.replace('-USDT','')] = {ask:+t.askPrice,bid:+t.bidPrice,vol:+t.quoteVolume||0,chg:+t.priceChangePercent||0};
+    });
+  } else if(exchange==='bitget') {
+    (d?.data||[]).forEach(t => {
+      if(t.symbol.endsWith('USDT')&&+t.askPr>0&&+t.bidPr>0)
+        out[t.symbol.replace('USDT','')] = {ask:+t.askPr,bid:+t.bidPr,vol:+t.usdtVol||0,chg:+t.changeUtc24h||0};
+    });
+  } else if(exchange==='htx') {
+    (d?.data||[]).forEach(t => {
+      if(t.symbol.endsWith('usdt')&&+t.ask>0&&+t.bid>0)
+        out[t.symbol.replace('usdt','').toUpperCase()] = {ask:+t.ask,bid:+t.bid,vol:(+t.vol)*(+t.close)||0,chg:((+t.close-(+t.open))/(+t.open))*100||0};
+    });
+  } else if(exchange==='toobit') {
+    const list = Array.isArray(d)?d:(d?.data||d?.result||[]);
+    list.forEach(t => {
+      const sym = t.s||t.symbol||'';
+      if(sym.endsWith('USDT')&&+(t.ap||t.askPrice||t.a)>0&&+(t.bp||t.bidPrice||t.b)>0)
+        out[sym.replace('USDT','')] = {ask:+(t.ap||t.askPrice||t.a),bid:+(t.bp||t.bidPrice||t.b),vol:+t.qv||0,chg:+t.p||0};
+    });
+  } else if(exchange==='phemex') {
+    const list = d?.result?.list||d?.data||[];
+    list.forEach(t => {
+      const sym = t.symbol||'';
+      if(sym.startsWith('s')&&sym.endsWith('USDT')) {
+        const coin = sym.slice(1).replace('USDT','');
+        const ask = t.askEp!==undefined?+t.askEp/1e8:+t.ask||0;
+        const bid = t.bidEp!==undefined?+t.bidEp/1e8:+t.bid||0;
+        if(ask>0&&bid>0&&bid<=ask*1.5) out[coin] = {ask,bid,vol:+t.turnoverEv/1e8||0,chg:+t.priceChgPct||0};
+      }
+    });
+  }
+  return Object.keys(out).length>0?out:null;
+}
+
+async function fetchAllTickers(exchange) {
+  if(USE_PROXY) {
+    const raw = await fetchFromProxy(exchange);
+    if(raw) return parseRaw(exchange, raw);
+  }
+  return fetchDirect(exchange);
+}
+
+async function fetchDirect(exchange) {
+  try {
+    const to = AbortSignal.timeout(7000);
+    const urls = {
+      bybit:  'https://api.bybit.com/v5/market/tickers?category=spot',
+      kucoin: 'https://api.kucoin.com/api/v1/market/allTickers',
+      gate:   'https://api.gateio.ws/api/v4/spot/tickers',
+      mexc:   'https://api.mexc.com/api/v3/ticker/24hr',
+      okx:    'https://www.okx.com/api/v5/market/tickers?instType=SPOT',
+      bingx:  'https://open-api.bingx.com/openApi/spot/v1/ticker/24hr',
+      bitget: 'https://api.bitget.com/api/v2/spot/market/tickers',
+      htx:    'https://api.huobi.pro/market/tickers',
+      toobit: 'https://api.toobit.com/quote/v1/ticker/bookTicker',
+      phemex: 'https://api.phemex.com/md/spot/ticker/24hr/all',
+    };
+    const r = await fetch(urls[exchange], {signal:to});
+    const d = await r.json();
+    return parseRaw(exchange, d);
+  } catch { return null; }
+}
+
+// ── State ────────────────────────────────────────────────────────────────────
+let allSpreads = [];
+let coinAllSpreads = {};
+let currentFilter = 'all';
+let scanning = false;
+let countdown = 45;
+let timerInterval = null;
+let isFirstLoad = true;
+
+// ── Badges ───────────────────────────────────────────────────────────────────
+function updateBadges() {
+  document.getElementById('exch-row').innerHTML = EXCHANGES.map(e => {
+    const s = exStatus[e.id];
+    const cls = s==='ok'?'ok':s==='err'?'err':'';
+    return '<div class="ex-badge '+cls+'"><span class="dot2"></span>'+e.name+'</div>';
+  }).join('');
+}
+
+// ── Scan ─────────────────────────────────────────────────────────────────────
+async function startScan() {
+  if(scanning) return;
+  scanning = true;
+  const scrollY = window.scrollY;
+  clearInterval(timerInterval);
+  document.getElementById('rbtn').disabled = true;
+  document.getElementById('rbtn').classList.add('loading');
+  document.getElementById('prog-wrap').style.display = 'block';
+  if(isFirstLoad) document.getElementById('tbody').innerHTML = '<tr class="loading-row"><td colspan="13"><span class="blink">●</span> загружаем цены с бирж...</td></tr>';
+
+  await checkProxy();
+  EXCHANGES.forEach(e => { exStatus[e.id]='loading'; });
+  updateBadges();
+
+  const prices = {};
+  let done = 0;
+  const total = EXCHANGES.length;
+  const setProg = txt => {
+    document.getElementById('prog-fill').style.width = Math.round((done/total)*100)+'%';
+    document.getElementById('prog-txt').textContent = txt;
+  };
+  setProg('подключаемся...');
+
+  await Promise.allSettled(EXCHANGES.map(async e => {
+    const data = await fetchAllTickers(e.id);
+    done++;
+    if(data && Object.keys(data).length>3) { prices[e.id]=data; exStatus[e.id]='ok'; }
+    else exStatus[e.id]='err';
+    updateBadges();
+    setProg('загружено '+done+'/'+total+' бирж...');
+  }));
+
+  document.getElementById('s-ex').textContent = Object.values(exStatus).filter(s=>s==='ok').length+'/'+EXCHANGES.length;
+
+  window._prices = prices;
+  const coinSets = {};
+  Object.entries(prices).forEach(([ex,tickers]) => {
+    Object.keys(tickers).forEach(coin => { if(!coinSets[coin]) coinSets[coin]=[]; coinSets[coin].push(ex); });
+  });
+
+  const spreads = [];
+  let pairCount = 0;
+
+  Object.entries(coinSets).forEach(([coin,exList]) => {
+    if(exList.length<2) return;
+    pairCount++;
+    const maxVol = Math.max(...exList.map(ex => prices[ex][coin]?.vol||0));
+    if(maxVol>0 && maxVol<10000) return;
+    for(let i=0;i<exList.length;i++) for(let j=i+1;j<exList.length;j++) {
+      const eA=exList[i], eB=exList[j];
+      const pA=prices[eA][coin], pB=prices[eB][coin];
+      if(!pA||!pB||!pA.ask||!pB.bid) continue;
+      const sAB = ((pB.bid-pA.ask)/pA.ask)*100;
+      const sBA = ((pA.bid-pB.ask)/pB.ask)*100;
+      if(sAB>0.15&&sAB<50) spreads.push({coin,buyEx:eA,sellEx:eB,buyP:pA.ask,sellP:pB.bid,spread:sAB,buyVol:pA.vol||0,sellVol:pB.vol||0,chg:pA.chg||pB.chg||0});
+      if(sBA>0.15&&sBA<50) spreads.push({coin,buyEx:eB,sellEx:eA,buyP:pB.ask,sellP:pA.bid,spread:sBA,buyVol:pB.vol||0,sellVol:pA.vol||0,chg:pB.chg||pA.chg||0});
+    }
+  });
+
+  spreads.sort((a,b) => b.spread-a.spread);
+
+  coinAllSpreads = {};
+  spreads.forEach(s => { if(!coinAllSpreads[s.coin]) coinAllSpreads[s.coin]=[]; coinAllSpreads[s.coin].push(s); });
+
+  const seen = new Set();
+  allSpreads = [];
+  for(const s of spreads) { if(!seen.has(s.coin)) { seen.add(s.coin); allSpreads.push(s); } }
+
+  const hot = allSpreads.filter(s=>s.spread>=1).length;
+  document.getElementById('s-total').textContent = allSpreads.length;
+  document.getElementById('s-best').textContent = allSpreads[0]?allSpreads[0].spread.toFixed(2)+'%':'0%';
+  document.getElementById('s-pairs').textContent = pairCount;
+  document.getElementById('s-hot').textContent = hot;
+  document.getElementById('lu').textContent = 'обновлено в '+new Date().toLocaleTimeString('ru-RU');
+  document.getElementById('prog-wrap').style.display = 'none';
+
+  scanning = false;
+  document.getElementById('rbtn').disabled = false;
+  document.getElementById('rbtn').classList.remove('loading');
+
+  renderRows();
+  renderFavorites();
+  if(!isFirstLoad) window.scrollTo({top:scrollY,behavior:'instant'});
+  isFirstLoad = false;
+  startCountdown();
+}
+
+function startCountdown() {
+  countdown = 45;
+  clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    countdown--;
+    document.getElementById('timer-badge').textContent = 'авто: '+countdown+'с';
+    if(countdown<=0) { clearInterval(timerInterval); if(!scanning) startScan(); }
+  }, 1000);
+}
+
+// ── Filters ──────────────────────────────────────────────────────────────────
+function setFilter(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll('.fb').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderRows();
+}
+
+// ── Format ───────────────────────────────────────────────────────────────────
+function fmtPrice(p) {
+  if(!p||isNaN(p)) return '—';
+  if(p<0.000001) return p.toExponential(2);
+  if(p<0.001) return p.toFixed(6);
+  if(p<0.1) return p.toFixed(4);
+  if(p<10) return p.toFixed(3);
+  if(p<1000) return p.toFixed(2);
+  return p.toLocaleString('ru-RU',{maximumFractionDigits:2});
+}
+
+function fmtVol(v) {
+  if(!v||isNaN(v)||v<=0) return '<span style="color:var(--text3)">—</span>';
+  const col = v>=500000?'var(--yellow)':'var(--text2)';
+  let str;
+  if(v>=1e9) str='$'+(v/1e9).toFixed(1)+'B';
+  else if(v>=1e6) str='$'+(v/1e6).toFixed(1)+'M';
+  else if(v>=1e3) str='$'+(v/1e3).toFixed(0)+'K';
+  else str='$'+v.toFixed(0);
+  return '<span style="color:'+col+';font-weight:'+(v>=500000?'700':'600')+'">'+str+'</span>';
+}
+
+function fmtChg(v) {
+  if(v===undefined||v===null||isNaN(v)||v===0) return '<span style="color:var(--text3)">—</span>';
+  const sign = v>0?'+':'';
+  const col = v>0?'var(--green)':'var(--red)';
+  return '<span style="color:'+col+';font-weight:700">'+sign+v.toFixed(2)+'%</span>';
+}
+
+function exNameOf(id) { const e=EXCHANGES.find(x=>x.id===id); return e?e.name:id; }
+
+function hasWdIssue(coin, ex) { return false; }
+
+// ── Render rows ──────────────────────────────────────────────────────────────
+function renderRows() {
+  const q = document.getElementById('search').value.trim().toUpperCase();
+  let data = allSpreads;
+  if(q) data = data.filter(s=>s.coin.includes(q));
+  if(currentFilter==='safe') data = data.filter(s=>!hasWdIssue(s.coin,s.buyEx)&&!hasWdIssue(s.coin,s.sellEx));
+  else if(currentFilter==='bigvol') data = data.filter(s=>(s.buyVol||0)>=1e6||(s.sellVol||0)>=1e6);
+
+  const sMin = parseFloat(document.getElementById('spread-min').value)||0;
+  const sMax = parseFloat(document.getElementById('spread-max').value)||50;
+  data = data.filter(s=>s.spread>=sMin&&s.spread<=sMax);
+
+  const vMin = parseFloat(document.getElementById('vol-min').value)||0;
+  const vMaxRaw = document.getElementById('vol-max').value;
+  const vMax = vMaxRaw===''||isNaN(parseFloat(vMaxRaw))?Infinity:parseFloat(vMaxRaw);
+  if(vMin>0||vMax<Infinity) data = data.filter(s=>{const v=(s.buyVol||0)+(s.sellVol||0);return v>=vMin&&v<=vMax;});
+
+  const profitBase = parseFloat(document.getElementById('profit-base').value)||1000;
+
+  const tbody = document.getElementById('tbody');
+  if(!data.length) { tbody.innerHTML='<tr class="empty-row"><td colspan="13">нет данных</td></tr>'; return; }
+
+  tbody.innerHTML = data.slice(0,500).map((s,i) => {
+    const sc = s.spread>=1?'hot':s.spread>=0.5?'warm':'cool';
+    const isFav = favorites.has(s.coin);
+    const profit = (profitBase*s.spread/100).toFixed(2);
+    return '<tr>'+
+      '<td class="rn">'+(i+1)+'</td>'+
+      '<td><button class="star-btn '+(isFav?'active':'')+'" onclick="toggleFav(\''+s.coin+'\')" title="В избранное">★</button></td>'+
+      '<td><span class="pair" onmouseenter="showTooltip(event,\''+s.coin+'\')" onmouseleave="hideTooltip()" onclick="logCoin(\''+s.coin+'\','+s.spread+')" style="cursor:pointer;text-decoration:underline;text-decoration-color:rgba(255,255,255,0.2);text-underline-offset:2px">'+s.coin+'<span class="pair-usdt">/USDT</span></span></td>'+
+      '<td><span class="ex-name" onclick="openExchange(\''+s.buyEx+'\',\''+s.coin+'\','+s.spread+')">'+exNameOf(s.buyEx)+'</span></td>'+
+      '<td class="r price-cell">'+fmtPrice(s.buyP)+'</td>'+
+      '<td style="width:4px;padding:0;border-left:2px solid rgba(80,140,255,0.15)"></td>'+
+      '<td><span class="ex-name" onclick="openExchange(\''+s.sellEx+'\',\''+s.coin+'\','+s.spread+',true)">'+exNameOf(s.sellEx)+'</span></td>'+
+      '<td class="r price-cell">'+fmtPrice(s.sellP)+'</td>'+
+      '<td style="width:4px;padding:0;border-left:2px solid rgba(80,140,255,0.15)"></td>'+
+      '<td class="r"><span class="spread-cell '+sc+'">'+s.spread.toFixed(3)+'%</span></td>'+
+      '<td class="r hide-m">'+fmtVol(s.buyVol)+' / '+fmtVol(s.sellVol)+'</td>'+
+      '<td class="r hide-m">'+fmtChg(s.chg)+'</td>'+
+      '<td class="r profit-cell hide-m">+$'+profit+'</td>'+
+      '</tr>';
+  }).join('');
+}
+
+// ── Open exchange ─────────────────────────────────────────────────────────────
+function openExchange(exId, coin, spread, isSell) {
+  const fn = EX_URLS[exId];
+  if(!fn) return;
+  window.open(fn(coin), '_blank');
+  const entry = (coinAllSpreads[coin]||[]).find(s => s.coin===coin && (s.buyEx===exId||s.sellEx===exId));
+  const buyEx = entry ? exNameOf(entry.buyEx) : '';
+  const sellEx = entry ? exNameOf(entry.sellEx) : '';
+  addHistory(coin, buyEx, sellEx, spread, isSell?'продать':'купить');
+}
+
+function logCoin(coin, spread) {
+  window.open('https://cryptorank.io/price/'+coin.toLowerCase(), '_blank');
+  const best = allSpreads.find(s => s.coin===coin);
+  const buyEx = best ? exNameOf(best.buyEx) : '';
+  const sellEx = best ? exNameOf(best.sellEx) : '';
+  addHistory(coin, buyEx, sellEx, spread, 'инфо');
+}
+
+// ── Tooltip ───────────────────────────────────────────────────────────────────
+function allSpreadsForCoin(coin) {
+  if(coinAllSpreads[coin] && coinAllSpreads[coin].length) return coinAllSpreads[coin];
+  // Fallback: compute all pairwise spreads from raw prices (for favorites below threshold)
+  const prices = window._prices || {};
+  const exList = Object.keys(prices).filter(ex => prices[ex][coin]);
+  const out = [];
+  for(let i=0;i<exList.length;i++) for(let j=0;j<exList.length;j++) {
+    if(i===j) continue;
+    const eA=exList[i], eB=exList[j];
+    const pA=prices[eA][coin], pB=prices[eB][coin];
+    if(!pA||!pB||!pA.ask||!pB.bid) continue;
+    const sp = ((pB.bid-pA.ask)/pA.ask)*100;
+    out.push({coin, buyEx:eA, sellEx:eB, spread:sp});
+  }
+  out.sort((a,b)=>b.spread-a.spread);
+  return out;
+}
+
+function showTooltip(e, coin) {
+  const all = allSpreadsForCoin(coin);
+  const tt = document.getElementById('coin-tooltip');
+  if(!all||all.length===0) { tt.style.display='none'; return; }
+  tt.innerHTML = '<div class="ct-title">'+coin+'/USDT · все спреды</div>'+
+    all.slice(0,8).map(s => {
+      const sc = s.spread>=1?'hot':s.spread>=0.5?'warm':'cool';
+      return '<div class="ct-row"><span class="ct-route"><strong>'+exNameOf(s.buyEx)+'</strong> → <strong>'+exNameOf(s.sellEx)+'</strong></span><span class="ct-spread '+sc+'">+'+s.spread.toFixed(3)+'%</span></div>';
+    }).join('');
+  posTooltip(e);
+  tt.style.display = 'block';
+}
+function posTooltip(e) {
+  const tt = document.getElementById('coin-tooltip');
+  const x=e.clientX+14, y=e.clientY-10;
+  const tw=tt.offsetWidth||280, th=tt.offsetHeight||100;
+  tt.style.left = (x+tw>window.innerWidth?x-tw-20:x)+'px';
+  tt.style.top  = (y+th>window.innerHeight?y-th:y)+'px';
+}
+function hideTooltip() { document.getElementById('coin-tooltip').style.display='none'; }
+document.addEventListener('mousemove', e => { if(document.getElementById('coin-tooltip').style.display!=='none') posTooltip(e); });
+
+// ── Favorites ─────────────────────────────────────────────────────────────────
+const favorites = new Set(JSON.parse(localStorage.getItem('arb_favs')||'[]'));
+
+function saveFavs() {
+  localStorage.setItem('arb_favs', JSON.stringify([...favorites]));
+  const cnt = favorites.size;
+  document.getElementById('fav-badge').textContent = cnt>0?'('+cnt+')':'';
+  document.getElementById('fav-count').textContent = cnt+' монет';
+}
+
+function toggleFav(coin) {
+  if(favorites.has(coin)) favorites.delete(coin); else favorites.add(coin);
+  saveFavs(); renderRows(); renderFavorites(); renderHistory();
+}
+
+function clearFavorites() {
+  if(confirm('Очистить избранное?')) { favorites.clear(); saveFavs(); renderRows(); renderFavorites(); }
+}
+
+function bestSpreadForCoin(coin) {
+  const prices = window._prices || {};
+  const exList = Object.keys(prices).filter(ex => prices[ex][coin]);
+  if(exList.length < 2) {
+    // only one exchange or none - show whatever single price exists
+    if(exList.length === 1) {
+      const ex = exList[0], p = prices[ex][coin];
+      return {coin, buyEx:ex, sellEx:ex, buyP:p.ask, sellP:p.bid, spread:0, buyVol:p.vol||0, sellVol:p.vol||0, chg:p.chg||0};
+    }
+    return null;
+  }
+  let best = null;
+  for(let i=0;i<exList.length;i++) for(let j=0;j<exList.length;j++) {
+    if(i===j) continue;
+    const eA=exList[i], eB=exList[j];
+    const pA=prices[eA][coin], pB=prices[eB][coin];
+    if(!pA||!pB||!pA.ask||!pB.bid) continue;
+    const sp = ((pB.bid-pA.ask)/pA.ask)*100;
+    if(!best || sp > best.spread) {
+      best = {coin, buyEx:eA, sellEx:eB, buyP:pA.ask, sellP:pB.bid, spread:sp, buyVol:pA.vol||0, sellVol:pB.vol||0, chg:pA.chg||pB.chg||0};
+    }
+  }
+  return best;
+}
+
+function renderFavorites() {
+  const tbody = document.getElementById('fav-tbody');
+  if(!favorites.size) { tbody.innerHTML='<tr><td colspan="8" class="hist-empty">Нет избранных — нажми ★ рядом с монетой</td></tr>'; return; }
+  const favList = [...favorites].map(coin => allSpreads.find(s=>s.coin===coin) || bestSpreadForCoin(coin) || {coin, buyEx:null, sellEx:null, buyP:null, sellP:null, spread:null, buyVol:0, sellVol:0, chg:0});
+  tbody.innerHTML = favList.map(s => {
+    if(s.spread === null) {
+      return '<tr>'+
+        '<td><button class="star-btn active" onclick="toggleFav(\''+s.coin+'\')" style="margin-right:6px">★</button>'+
+        '<span class="hist-coin" onmouseenter="showTooltip(event,\''+s.coin+'\')" onmouseleave="hideTooltip()" onclick="window.open(\'https://cryptorank.io/price/'+s.coin.toLowerCase()+'\',\'_blank\')">'+s.coin+'/USDT</span></td>'+
+        '<td colspan="7" style="color:var(--text3);font-size:12px">нет данных по бирже</td>'+
+        '</tr>';
+    }
+    const sc = s.spread>=1?'hot':s.spread>=0.5?'warm':'cool';
+    return '<tr>'+
+      '<td><button class="star-btn active" onclick="toggleFav(\''+s.coin+'\')" style="margin-right:6px">★</button>'+
+      '<span class="hist-coin" onmouseenter="showTooltip(event,\''+s.coin+'\')" onmouseleave="hideTooltip()" onclick="window.open(\'https://cryptorank.io/price/'+s.coin.toLowerCase()+'\',\'_blank\')">'+s.coin+'/USDT</span></td>'+
+      '<td><span class="hist-ex" onclick="openExchange(\''+s.buyEx+'\',\''+s.coin+'\','+s.spread+')">'+exNameOf(s.buyEx)+'</span></td>'+
+      '<td class="r price-cell">'+fmtPrice(s.buyP)+'</td>'+
+      '<td><span class="hist-ex" onclick="openExchange(\''+s.sellEx+'\',\''+s.coin+'\','+s.spread+',true)">'+exNameOf(s.sellEx)+'</span></td>'+
+      '<td class="r price-cell">'+fmtPrice(s.sellP)+'</td>'+
+      '<td class="r"><span class="spread-cell '+sc+'">'+s.spread.toFixed(3)+'%</span></td>'+
+      '<td class="r">'+fmtVol(s.buyVol)+'</td>'+
+      '<td class="r">'+fmtChg(s.chg)+'</td>'+
+      '</tr>';
+  }).join('');
+}
+
+// ── History ───────────────────────────────────────────────────────────────────
+let historyLog = JSON.parse(localStorage.getItem('arb_history')||'[]');
+// Migrate old entries (had single 'exchange' field) - drop them, format changed
+historyLog = historyLog.filter(e => e.buyEx !== undefined || e.sellEx !== undefined || e.exchange === undefined);
+historyLog.forEach(e => { if(e.exchange !== undefined && e.buyEx === undefined) { e.buyEx=''; e.sellEx=''; delete e.exchange; } });
+
+function addHistory(coin, buyEx, sellEx, spread, type) {
+  const now = new Date();
+  // Skip if the most recent entry is the same coin (avoid duplicates when clicking both exchanges)
+  if(historyLog.length && historyLog[0].coin === coin) {
+    historyLog[0] = {
+      time: now.toLocaleTimeString('ru-RU')+' '+now.toLocaleDateString('ru-RU'),
+      coin, buyEx, sellEx, spread: spread?spread.toFixed(3):null, type
+    };
+  } else {
+    historyLog.unshift({
+      time: now.toLocaleTimeString('ru-RU')+' '+now.toLocaleDateString('ru-RU'),
+      coin, buyEx, sellEx, spread: spread?spread.toFixed(3):null, type
+    });
+  }
+  if(historyLog.length>200) historyLog.pop();
+  localStorage.setItem('arb_history', JSON.stringify(historyLog));
+  renderHistory();
+}
+
+function exIdOf(name) {
+  const found = Object.entries(EXNAMES).find(([k,v])=>v===name);
+  return found ? found[0] : null;
+}
+
+function renderHistory() {
+  const tbody = document.getElementById('hist-tbody');
+  const badge = document.getElementById('hist-badge');
+  const count = document.getElementById('hist-count');
+  badge.textContent = historyLog.length>0?'('+historyLog.length+')':'';
+  count.textContent = historyLog.length+' записей';
+  if(!historyLog.length) { tbody.innerHTML='<tr><td colspan="6" class="hist-empty">История пуста — нажимай на биржи и монеты</td></tr>'; return; }
+  tbody.innerHTML = historyLog.map(e => {
+    const spreadHtml = e.spread?'<span style="color:var(--green);font-weight:700">+'+e.spread+'%</span>':'—';
+    const isFav = favorites.has(e.coin);
+    const buyId = exIdOf(e.buyEx);
+    const sellId = exIdOf(e.sellEx);
+    let routeHtml = '';
+    if(e.buyEx && e.sellEx) {
+      const buyClick = buyId ? 'onclick="window.open(EX_URLS[\''+buyId+'\'](\''+e.coin+'\'),\'_blank\')"' : '';
+      const sellClick = sellId ? 'onclick="window.open(EX_URLS[\''+sellId+'\'](\''+e.coin+'\'),\'_blank\')"' : '';
+      routeHtml = '<span class="hist-ex" '+buyClick+'>'+e.buyEx+'</span> <span style="color:var(--text3)">→</span> <span class="hist-ex" '+sellClick+'>'+e.sellEx+'</span>';
+    } else {
+      routeHtml = '<span style="color:var(--text3)">—</span>';
+    }
+    return '<tr>'+
+      '<td class="hist-time">'+e.time+'</td>'+
+      '<td><button class="star-btn '+(isFav?'active':'')+'" onclick="toggleFav(\''+e.coin+'\')" title="В избранное">★</button></td>'+
+      '<td><span class="hist-coin" onmouseenter="showTooltip(event,\''+e.coin+'\')" onmouseleave="hideTooltip()" onclick="window.open(\'https://cryptorank.io/price/'+e.coin.toLowerCase()+'\',\'_blank\')">'+e.coin+'/USDT</span></td>'+
+      '<td>'+routeHtml+'</td>'+
+      '<td class="r">'+spreadHtml+'</td>'+
+      '<td><span style="font-size:11px;color:var(--text3)">'+e.type+'</span></td>'+
+      '</tr>';
+  }).join('');
+}
+
+function clearHistory() {
+  if(confirm('Очистить всю историю?')) { historyLog.length=0; localStorage.setItem('arb_history','[]'); renderHistory(); }
+}
+
+// ── Tabs ──────────────────────────────────────────────────────────────────────
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+saveFavs();
+renderHistory();
+updateBadges();
+startScan();
+</script>
+</body>
+</html>
