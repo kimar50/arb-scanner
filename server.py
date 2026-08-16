@@ -730,7 +730,7 @@ def jr(data, status=200):
 
 async def h_api_me(request):
     u = current_user(request)
-    tier = user_tier(u)
+    tier = user_tier(u) if AUTH_ENABLED else "vip"
     return jr({
         "auth_enabled": AUTH_ENABLED,
         "logged_in": bool(u),
