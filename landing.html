@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ARB — сканер крипто-арбитража между биржами</title>
+<meta name="description" content="Живые спреды между 19 CEX-биржами, доступными из России. Купить дешевле, продать дороже — видно сразу.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#060d1a; --panel:#0b1628; --panel2:#0f1e35; --raise:#132542;
+  --rule:rgba(80,140,255,.16); --rule2:rgba(80,140,255,.30);
+  --txt:#dfeeff; --dim:#6a96c8; --faint:#2d4a6b;
+  --gain:#1eff9a; --accent:#4da6ff; --warn:#ffd060; --loss:#ff5f5f;
+  --mono:'JetBrains Mono',ui-monospace,'Fira Code','Courier New',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  background:var(--ink);color:var(--txt);font-family:var(--mono);
+  font-size:14px;line-height:1.55;-webkit-font-smoothing:antialiased;
+  background-image:
+    radial-gradient(900px 500px at 12% -5%, rgba(77,166,255,.10), transparent 60%),
+    radial-gradient(700px 420px at 92% 8%, rgba(30,255,154,.07), transparent 60%);
+  background-attachment:fixed;
+}
+a{color:inherit;text-decoration:none}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
+
+/* ── шапка ───────────────────────────────────────────── */
+.nav{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:18px 32px;border-bottom:1px solid var(--rule);
+  position:sticky;top:0;background:rgba(6,13,26,.86);
+  backdrop-filter:blur(14px);z-index:50;
+}
+.brand{display:flex;align-items:center;gap:10px}
+.pulse{width:7px;height:7px;border-radius:50%;background:var(--gain);
+  box-shadow:0 0 0 0 rgba(30,255,154,.6);animation:pulse 2.4s infinite}
+@keyframes pulse{
+  0%{box-shadow:0 0 0 0 rgba(30,255,154,.5)}
+  70%{box-shadow:0 0 0 9px rgba(30,255,154,0)}
+  100%{box-shadow:0 0 0 0 rgba(30,255,154,0)}
+}
+.brand b{font-weight:800;letter-spacing:.16em;font-size:15px}
+.nav-links{display:flex;gap:26px;align-items:center;font-size:13px;color:var(--dim)}
+.nav-links a:hover{color:var(--txt)}
+.nav-cta{
+  border:1px solid var(--rule2);padding:7px 16px;border-radius:7px;
+  color:var(--accent);font-weight:700;font-size:13px;transition:.16s;
+}
+.nav-cta:hover{background:var(--accent);color:#04101f;border-color:var(--accent)}
+
+/* ── экран 1 ─────────────────────────────────────────── */
+.hero{
+  max-width:1240px;margin:0 auto;padding:64px 32px 88px;
+  display:grid;grid-template-columns:1.15fr .85fr;gap:64px;align-items:start;
+}
+.eyebrow{
+  font-size:11px;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--faint);margin-bottom:22px;
+}
+h1{
+  font-size:clamp(30px,4.4vw,52px);font-weight:800;line-height:1.08;
+  letter-spacing:-.02em;margin-bottom:20px;
+}
+h1 .g{color:var(--gain)}
+h1 .thin{font-weight:400;color:var(--dim)}
+.lede{color:var(--dim);font-size:15px;max-width:44ch;margin-bottom:34px}
+
+/* сигнатурный элемент: живая лента спредов */
+.board{
+  border:1px solid var(--rule2);border-radius:12px;overflow:hidden;
+  background:linear-gradient(180deg,var(--panel2),var(--panel));
+}
+.board-top{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:11px 16px;border-bottom:1px solid var(--rule);
+  font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);
+}
+.live{display:flex;align-items:center;gap:7px;color:var(--gain)}
+.board-row{
+  display:grid;grid-template-columns:96px 1fr 82px;gap:14px;
+  padding:11px 16px;border-bottom:1px solid var(--rule);
+  align-items:center;animation:slide .45s ease both;
+}
+.board-row:last-child{border-bottom:none}
+@keyframes slide{from{opacity:0;transform:translateY(-7px)}to{opacity:1;transform:none}}
+.b-coin{font-weight:800;color:#fff}
+.b-coin small{font-weight:400;color:var(--faint)}
+.b-route{font-size:12px;color:var(--dim);display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.b-route b{color:var(--accent);font-weight:600}
+.b-spread{text-align:right;font-weight:800;font-variant-numeric:tabular-nums;color:var(--gain)}
+.board-skel{padding:52px 16px;text-align:center;color:var(--faint);font-size:13px}
+.board-foot{
+  padding:11px 16px;font-size:11px;color:var(--faint);
+  display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;
+}
+
+/* карточка входа */
+.card{
+  border:1px solid var(--rule2);border-radius:14px;padding:32px;
+  background:linear-gradient(180deg,var(--panel2),var(--panel));
+  position:sticky;top:100px;
+}
+.card h2{font-size:20px;font-weight:800;margin-bottom:8px;letter-spacing:-.01em}
+.card p.sub{color:var(--dim);font-size:13px;margin-bottom:26px}
+.gbtn{
+  display:flex;align-items:center;justify-content:center;gap:12px;width:100%;
+  background:#fff;color:#111;border:none;border-radius:9px;
+  padding:14px;font-family:var(--mono);font-size:14px;font-weight:700;
+  cursor:pointer;transition:.16s;
+}
+.gbtn:hover{transform:translateY(-1px);box-shadow:0 8px 26px rgba(0,0,0,.45)}
+.gbtn svg{width:19px;height:19px;flex:none}
+.card .note{font-size:11px;color:var(--faint);margin-top:18px;line-height:1.7}
+.perks{list-style:none;margin:26px 0 0;padding-top:22px;border-top:1px solid var(--rule)}
+.perks li{
+  display:flex;gap:11px;font-size:13px;color:var(--dim);
+  padding:7px 0;align-items:flex-start;
+}
+.perks li i{color:var(--gain);font-style:normal;flex:none}
+.err{
+  background:rgba(255,95,95,.1);border:1px solid rgba(255,95,95,.35);
+  color:#ffb3b3;font-size:12px;padding:10px 13px;border-radius:8px;margin-bottom:18px;
+}
+
+/* ── секции ──────────────────────────────────────────── */
+section{max-width:1240px;margin:0 auto;padding:0 32px 96px}
+.sec-head{margin-bottom:38px}
+.sec-head .eyebrow{margin-bottom:12px}
+.sec-head h2{font-size:clamp(22px,2.6vw,30px);font-weight:800;letter-spacing:-.015em}
+.sec-head p{color:var(--dim);margin-top:10px;max-width:56ch}
+
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--rule);
+  border:1px solid var(--rule);border-radius:12px;overflow:hidden}
+.step{background:var(--panel);padding:28px 24px}
+.step .n{
+  font-size:11px;color:var(--gain);letter-spacing:.2em;margin-bottom:14px;font-weight:700;
+}
+.step h3{font-size:15px;font-weight:700;margin-bottom:8px}
+.step p{color:var(--dim);font-size:13px}
+
+.ex-grid{display:flex;flex-wrap:wrap;gap:8px}
+.ex-chip{
+  border:1px solid var(--rule2);border-radius:999px;padding:6px 14px;
+  font-size:12px;color:var(--dim);
+}
+.ex-chip.on{border-color:rgba(30,255,154,.42);color:var(--gain);background:rgba(30,255,154,.06)}
+
+/* тарифы */
+.plans{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.plan{
+  border:1px solid var(--rule2);border-radius:12px;padding:26px;
+  background:var(--panel);display:flex;flex-direction:column;
+}
+.plan.best{border-color:var(--gain);background:linear-gradient(180deg,rgba(30,255,154,.05),var(--panel));
+  position:relative}
+.plan.best::after{
+  content:'выбор трейдеров';position:absolute;top:-9px;left:24px;
+  background:var(--gain);color:#04140c;font-size:10px;font-weight:800;
+  letter-spacing:.1em;text-transform:uppercase;padding:3px 10px;border-radius:999px;
+}
+.plan h3{font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);margin-bottom:14px}
+.price{font-size:34px;font-weight:800;letter-spacing:-.03em;margin-bottom:4px}
+.price small{font-size:13px;font-weight:400;color:var(--faint)}
+.plan ul{list-style:none;margin:22px 0;flex:1}
+.plan li{font-size:13px;color:var(--dim);padding:6px 0;display:flex;gap:10px}
+.plan li i{font-style:normal;color:var(--gain);flex:none}
+.plan li.off{color:var(--faint)}
+.plan li.off i{color:var(--faint)}
+.plan .go{
+  display:block;text-align:center;border:1px solid var(--rule2);border-radius:8px;
+  padding:11px;font-weight:700;font-size:13px;transition:.16s;
+}
+.plan .go:hover{border-color:var(--accent);color:var(--accent)}
+.plan.best .go{background:var(--gain);color:#04140c;border-color:var(--gain)}
+.plan.best .go:hover{filter:brightness(1.1)}
+
+footer{
+  border-top:1px solid var(--rule);padding:28px 32px;
+  max-width:1240px;margin:0 auto;display:flex;justify-content:space-between;
+  flex-wrap:wrap;gap:14px;color:var(--faint);font-size:12px;
+}
+.disclaim{max-width:1240px;margin:0 auto;padding:0 32px 40px;color:var(--faint);font-size:11px;line-height:1.8;max-width:80ch}
+
+@media (max-width:960px){
+  .hero{grid-template-columns:1fr;gap:44px;padding:44px 20px 64px}
+  .card{position:static}
+  .steps,.plans{grid-template-columns:1fr}
+  .nav{padding:14px 20px}
+  .nav-links a:not(.nav-cta){display:none}
+  section{padding:0 20px 64px}
+  footer{padding:24px 20px}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation:none!important;transition:none!important;scroll-behavior:auto}
+}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="brand"><span class="pulse"></span><b>ARB</b></div>
+  <div class="nav-links">
+    <a href="#how">Как это работает</a>
+    <a href="#exchanges">Биржи</a>
+    <a href="#pricing">Тарифы</a>
+    <a class="nav-cta" href="/auth/google">Войти</a>
+  </div>
+</nav>
+
+<div class="hero">
+  <div>
+    <div class="eyebrow">Спот · только пары к USDT · биржи, доступные из РФ</div>
+    <h1>Одна монета.<br>Две биржи.<br><span class="g">Разная цена.</span></h1>
+    <p class="lede">
+      Сканер сравнивает стакан 19 бирж каждые 8 секунд и показывает, где монету
+      можно купить дешевле, чем её же продают в этот момент на другой площадке.
+    </p>
+
+    <div class="board">
+      <div class="board-top">
+        <span>Спреды прямо сейчас</span>
+        <span class="live"><span class="pulse"></span>в эфире</span>
+      </div>
+      <div id="board"><div class="board-skel">считаем спреды…</div></div>
+      <div class="board-foot">
+        <span id="foot-l">—</span>
+        <span>задержка 90с · без задержки на Pro</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div id="err-slot"></div>
+    <h2>Вход в сканер</h2>
+    <p class="sub">Аккаунт нужен, чтобы хранить избранное и историю. Пароль придумывать не придётся.</p>
+
+    <a class="gbtn" href="/auth/google">
+      <svg viewBox="0 0 48 48" aria-hidden="true">
+        <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.6 30.2 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.8 6.1C12.3 13.2 17.6 9.5 24 9.5z"/>
+        <path fill="#4285F4" d="M46.1 24.6c0-1.6-.1-3.1-.4-4.6H24v9.1h12.4c-.5 2.9-2.2 5.3-4.6 7l7.6 5.9c4.4-4.1 6.7-10.750 6.7-17.4z"/>
+        <path fill="#FBBC05" d="M10.4 28.7c-.5-1.4-.8-2.9-.8-4.7s.3-3.3.8-4.7l-7.8-6.1C.9 16.5 0 20.1 0 24s.9 7.5 2.6 10.8l7.8-6.1z"/>
+        <path fill="#34A853" d="M24 48c6.2 0 11.5-2 15.4-5.5l-7.6-5.9c-2.1 1.4-4.8 2.3-7.8 2.3-6.4 0-11.7-3.7-13.6-8.9l-7.8 6.1C6.5 42.6 14.6 48 24 48z"/>
+      </svg>
+      Продолжить с Google
+    </a>
+
+    <ul class="perks">
+      <li><i>→</i> 19 бирж, все работают из России</li>
+      <li><i>→</i> Все монеты в парах к USDT, не фиксированный список</li>
+      <li><i>→</i> Объём за 24 часа рядом с каждой биржей</li>
+      <li><i>→</i> Клик по бирже открывает нужную пару в терминале</li>
+    </ul>
+
+    <p class="note">
+      Сканер показывает разницу цен. Он не торгует за вас и не хранит ваши ключи от бирж.
+    </p>
+  </div>
+</div>
+
+<section id="how">
+  <div class="sec-head">
+    <div class="eyebrow">Порядок действий</div>
+    <h2>Спред живёт минуты. Поэтому шагов всего три.</h2>
+    <p>Сканер не сделает сделку за вас — он экономит те самые минуты, за которые вы иначе переключали бы вкладки бирж вручную.</p>
+  </div>
+  <div class="steps">
+    <div class="step">
+      <div class="n">ШАГ 01</div>
+      <h3>Отобрать</h3>
+      <p>Задайте коридор спреда и минимальный объём за сутки. Монеты с мёртвой ликвидностью не попадут в таблицу.</p>
+    </div>
+    <div class="step">
+      <div class="n">ШАГ 02</div>
+      <h3>Проверить</h3>
+      <p>Наведите курсор на монету — увидите все маршруты между биржами, а не только лучший. Заодно станет видно, спред это или разовый выброс.</p>
+    </div>
+    <div class="step">
+      <div class="n">ШАГ 03</div>
+      <h3>Открыть обе биржи</h3>
+      <p>Клик по названию биржи открывает эту же пару в новой вкладке. Остаётся сверить стакан и глубину — цифры в таблице это верх стакана.</p>
+    </div>
+  </div>
+</section>
+
+<section id="exchanges">
+  <div class="sec-head">
+    <div class="eyebrow">Площадки</div>
+    <h2>19 бирж <span style="color:var(--dim);font-weight:400">— зелёные доступны без подписки</span></h2>
+    <p>Список подобран по одному признаку: биржа работает из России и отдаёт публичный стакан. Мы не подключаем площадки, с которых потом нельзя вывести монету.</p>
+  </div>
+  <div class="ex-grid" id="ex-grid"></div>
+</section>
+
+<section id="pricing">
+  <div class="sec-head">
+    <div class="eyebrow">Подписка</div>
+    <h2>Разница между тарифами — это время</h2>
+    <p>На бесплатном тарифе данные приходят с задержкой в 90 секунд. Спред за это время обычно успевают забрать. Платные тарифы отдают тот же поток без задержки.</p>
+  </div>
+  <div class="plans">
+    <div class="plan">
+      <h3>Свободный</h3>
+      <div class="price">0 ₽<small> / месяц</small></div>
+      <ul>
+        <li><i>✓</i> 5 крупнейших бирж</li>
+        <li><i>✓</i> 25 лучших спредов</li>
+        <li class="off"><i>·</i> Задержка данных 90 секунд</li>
+        <li class="off"><i>·</i> Без истории и избранного</li>
+      </ul>
+      <a class="go" href="/auth/google">Начать бесплатно</a>
+    </div>
+    <div class="plan best">
+      <h3>Pro</h3>
+      <div class="price">990 ₽<small> / месяц</small></div>
+      <ul>
+        <li><i>✓</i> Все 19 бирж</li>
+        <li><i>✓</i> Данные без задержки</li>
+        <li><i>✓</i> До 500 спредов в таблице</li>
+        <li><i>✓</i> Избранное и история переходов</li>
+      </ul>
+      <a class="go" href="/auth/google">Оформить Pro</a>
+    </div>
+    <div class="plan">
+      <h3>VIP</h3>
+      <div class="price">2 490 ₽<small> / месяц</small></div>
+      <ul>
+        <li><i>✓</i> Всё из Pro</li>
+        <li><i>✓</i> Доступ к API сканера</li>
+        <li><i>✓</i> Приоритетная поддержка</li>
+        <li><i>✓</i> Ранний доступ к новым биржам</li>
+      </ul>
+      <a class="go" href="/auth/google">Оформить VIP</a>
+    </div>
+  </div>
+</section>
+
+<div class="disclaim">
+  Сервис показывает публичные котировки бирж и разницу между ними. Это данные, а не
+  торговая рекомендация. Цены в таблице — верх стакана: реальная цена исполнения зависит
+  от глубины, комиссий биржи и сети, а также от того, открыт ли вывод монеты в нужный момент.
+  Проверяйте всё это на самой бирже перед сделкой.
+</div>
+
+<footer>
+  <span>ARB · сканер крипто-арбитража</span>
+  <span id="foot-r"></span>
+</footer>
+
+<script>
+const $ = s => document.querySelector(s);
+
+if (new URLSearchParams(location.search).get('error')) {
+  $('#err-slot').innerHTML =
+    '<div class="err">Не удалось войти. Попробуйте ещё раз — если повторится, напишите в поддержку.</div>';
+}
+
+const EX_NAMES = ['Bybit','KuCoin','Gate.io','MEXC','OKX','BingX','Bitget','HTX','Toobit',
+                  'Phemex','CoinEx','BitMart','XT.com','LBank','WhiteBIT','AscendEX',
+                  'Poloniex','Bitrue','EXMO'];
+const FREE = ['Bybit','KuCoin','Gate.io','MEXC','OKX'];
+
+$('#ex-grid').innerHTML = EX_NAMES.map(n =>
+  `<span class="ex-chip ${FREE.includes(n) ? 'on' : ''}">${n}</span>`).join('');
+
+let idx = 0, rows = [];
+
+function paint() {
+  const board = $('#board');
+  if (!rows.length) {
+    board.innerHTML = '<div class="board-skel">биржи опрашиваются, первые спреды появятся через несколько секунд</div>';
+    return;
+  }
+  const slice = [];
+  for (let i = 0; i < 6; i++) slice.push(rows[(idx + i) % rows.length]);
+  board.innerHTML = slice.map(r => `
+    <div class="board-row">
+      <div class="b-coin">${r.c}<small>/USDT</small></div>
+      <div class="b-route"><b>${r.be}</b><span style="color:var(--faint)">→</span><b>${r.se}</b></div>
+      <div class="b-spread">+${r.s.toFixed(2)}%</div>
+    </div>`).join('');
+}
+
+async function pull() {
+  try {
+    const d = await (await fetch('/api/teaser')).json();
+    rows = d.rows || [];
+    if (d.pairs) {
+      $('#foot-l').textContent =
+        `${d.online} бирж на связи · ${d.pairs.toLocaleString('ru-RU')} пар проверено`;
+      $('#foot-r').textContent = `${d.total} спредов найдено сейчас`;
+    }
+    paint();
+  } catch (e) { /* лендинг переживёт */ }
+}
+
+pull();
+setInterval(pull, 15000);
+setInterval(() => { if (rows.length > 6) { idx = (idx + 1) % rows.length; paint(); } }, 3200);
+</script>
+</body>
+</html>

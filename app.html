@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Сканер · ARB</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#07101f;--panel:#0b1628;--panel2:#0f1e35;--raise:#132542;
+  --rule:rgba(80,140,255,.12);--rule2:rgba(80,140,255,.25);
+  --txt:#ddeeff;--dim:#6a96c8;--faint:#304f72;
+  --gain:#1eff9a;--gain2:#10c870;--warn:#ffd060;--loss:#ff5f5f;--accent:#4da6ff;
+  --mono:'JetBrains Mono',ui-monospace,'Fira Code','Courier New',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--ink);color:var(--txt);font-family:var(--mono);font-size:13px;min-height:100vh}
+a{color:inherit;text-decoration:none}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;
+  border-bottom:1px solid var(--rule2);background:var(--panel);position:sticky;top:0;z-index:40}
+.brand{display:flex;align-items:center;gap:10px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--gain);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.brand b{font-size:14px;font-weight:800;letter-spacing:.14em}
+.brand small{display:block;font-size:11px;color:var(--faint);margin-top:1px}
+.top-right{display:flex;align-items:center;gap:10px}
+.chip{font-size:11px;color:var(--dim);padding:5px 10px;border:1px solid var(--rule2);border-radius:6px}
+.chip.tier-pro{color:var(--gain);border-color:rgba(30,255,154,.4);background:rgba(30,255,154,.07);font-weight:700}
+.chip.tier-vip{color:var(--warn);border-color:rgba(255,208,96,.4);background:rgba(255,208,96,.07);font-weight:700}
+.rbtn{background:none;border:1px solid var(--rule2);color:var(--dim);padding:7px 14px;
+  border-radius:6px;cursor:pointer;font-family:var(--mono);font-size:12px;
+  display:flex;align-items:center;gap:6px;transition:.18s}
+.rbtn:hover{border-color:var(--gain);color:var(--gain)}
+.rbtn:disabled{opacity:.4;cursor:not-allowed}
+.rbtn .spin{display:none;animation:spin 1s linear infinite}
+.rbtn.loading .spin{display:inline}.rbtn.loading .ico{display:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+.avatar{width:28px;height:28px;border-radius:50%;border:1px solid var(--rule2)}
+
+.wrap{max-width:1440px;margin:0 auto;padding:22px 24px 60px}
+
+.tabs{display:flex;gap:2px;margin-bottom:20px;border-bottom:1px solid var(--rule2)}
+.tab-btn{font-size:12px;padding:9px 18px;background:none;border:none;border-bottom:2px solid transparent;
+  color:var(--dim);cursor:pointer;font-family:var(--mono);transition:.15s;margin-bottom:-1px}
+.tab-btn:hover{color:var(--txt)}
+.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:700}
+.tab-panel{display:none}.tab-panel.active{display:block}
+
+.stats{display:flex;gap:12px;margin-bottom:18px;flex-wrap:wrap}
+.stat{flex:1;min-width:118px;background:var(--panel2);border:1px solid var(--rule2);
+  border-radius:9px;padding:13px 15px}
+.stat-l{font-size:10px;color:var(--dim);letter-spacing:.09em;text-transform:uppercase;margin-bottom:5px}
+.stat-v{font-size:23px;font-weight:800;color:#fff;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.stat-v.g{color:var(--gain)}
+
+.upsell{background:linear-gradient(90deg,rgba(30,255,154,.09),rgba(77,166,255,.05));
+  border:1px solid rgba(30,255,154,.3);border-left:3px solid var(--gain);border-radius:9px;
+  padding:13px 17px;margin-bottom:18px;font-size:12.5px;color:var(--dim);
+  display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
+.upsell b{color:var(--txt)}
+.upsell a{background:var(--gain);color:#04140c;padding:7px 15px;border-radius:7px;
+  font-weight:800;font-size:12px;white-space:nowrap}
+
+.exrow{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:18px}
+.exb{font-size:11px;padding:4px 10px;border-radius:999px;border:1px solid var(--rule2);
+  color:var(--faint);display:flex;align-items:center;gap:5px}
+.exb .d{width:5px;height:5px;border-radius:50%;background:currentColor}
+.exb.ok{border-color:var(--gain2);color:var(--gain);background:rgba(30,255,154,.06)}
+.exb.err{border-color:rgba(255,95,95,.35);color:var(--loss);background:rgba(255,95,95,.06)}
+.exb.locked{opacity:.4}
+
+.controls{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center}
+.fb{font-size:12px;padding:6px 14px;border:1px solid var(--rule2);border-radius:999px;
+  background:none;cursor:pointer;color:var(--dim);font-family:var(--mono);transition:.15s}
+.fb:hover{border-color:var(--accent);color:var(--accent)}
+.fb.active{background:var(--accent);color:#04101f;border-color:var(--accent);font-weight:700}
+.search-wrap{margin-left:auto}
+.search-wrap input{background:var(--panel2);border:1px solid var(--rule2);color:var(--txt);
+  padding:6px 12px;border-radius:6px;font-family:var(--mono);font-size:12px;width:210px;outline:none}
+.search-wrap input:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(77,166,255,.14)}
+.search-wrap input::placeholder{color:var(--faint)}
+
+.range-row{display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.rr-l{font-size:12px;color:var(--dim)}
+.range-row input[type=number]{background:var(--panel2);border:1px solid var(--rule2);color:var(--txt);
+  padding:5px 10px;border-radius:6px;font-family:var(--mono);font-size:13px;font-weight:700;
+  width:74px;outline:none;-moz-appearance:textfield;font-variant-numeric:tabular-nums}
+.range-row input[type=number]::-webkit-outer-spin-button,
+.range-row input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.range-row input[type=number]:focus{border-color:var(--accent)}
+.rr-sep{width:1px;height:18px;background:var(--rule2);display:inline-block;margin:0 10px}
+.rr-reset{font-size:11px;padding:5px 10px;border:1px solid var(--rule2);border-radius:6px;
+  background:none;cursor:pointer;color:var(--faint);font-family:var(--mono);transition:.15s}
+.rr-reset:hover{color:var(--accent);border-color:var(--accent)}
+
+.tbl-wrap{overflow-x:auto}
+.tbl{width:100%;border-collapse:collapse}
+.tbl thead th{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--dim);
+  padding:10px 12px;text-align:left;border-bottom:1px solid var(--rule2);white-space:nowrap;
+  font-weight:600;background:var(--panel2);position:sticky;top:57px;z-index:5}
+.tbl thead th.r{text-align:right}
+.tbl tbody tr{border-bottom:1px solid var(--rule);transition:background .12s}
+.tbl tbody tr:hover{background:var(--panel)}
+.tbl tbody td{padding:11px 12px;vertical-align:middle;white-space:nowrap}
+.tbl tbody td.r{text-align:right}
+.div-col{width:3px;padding:0!important;border-left:2px solid var(--rule2)}
+.rn{color:var(--faint);font-size:12px;font-weight:500}
+.pair{font-size:14px;font-weight:800;color:#fff;cursor:pointer;
+  text-decoration:underline;text-decoration-color:rgba(255,255,255,.18);text-underline-offset:2px}
+.pair:hover{color:var(--accent)}
+.pair small{color:var(--dim);font-weight:400}
+.ex-name{font-size:12px;color:var(--accent);font-weight:600;cursor:pointer;
+  text-decoration:underline;text-decoration-color:rgba(77,166,255,.32);text-underline-offset:2px}
+.ex-name:hover{color:#fff}
+.price{font-size:13px;color:#c8deff;font-weight:700;font-variant-numeric:tabular-nums}
+.spread{font-size:15px;font-weight:900;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.spread.hot{color:var(--gain)}.spread.warm{color:var(--warn)}.spread.cool{color:var(--dim)}
+.profit{font-size:13px;color:var(--gain);font-weight:800;font-variant-numeric:tabular-nums}
+.star{background:none;border:none;cursor:pointer;font-size:16px;color:var(--faint);
+  padding:0;line-height:1;transition:.15s}
+.star:hover{transform:scale(1.18)}
+.star.on{color:var(--warn)}
+.msg td{text-align:center;padding:48px;color:var(--faint);font-size:13px}
+.blink{animation:blink 1s infinite}
+@keyframes blink{0%,100%{opacity:.3}50%{opacity:1}}
+.foot{display:flex;justify-content:space-between;align-items:center;padding-top:16px;
+  flex-wrap:wrap;gap:8px;font-size:11px;color:var(--faint)}
+
+.tip{position:fixed;z-index:900;background:var(--panel);border:1px solid var(--rule2);
+  border-radius:9px;padding:11px 15px;min-width:290px;box-shadow:0 10px 36px rgba(0,0,0,.65);
+  pointer-events:none;display:none}
+.tip-t{font-size:11px;color:var(--dim);letter-spacing:.09em;text-transform:uppercase;
+  margin-bottom:8px;font-weight:600}
+.tip-r{display:flex;justify-content:space-between;gap:18px;padding:4px 0;
+  border-bottom:1px solid var(--rule);font-size:12px}
+.tip-r:last-child{border-bottom:none}
+.tip-r span:first-child{color:var(--dim)}
+.tip-r b{color:var(--accent);font-weight:600}
+.tip-s{font-weight:800}
+
+.sub-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.sub-head span{font-size:12px;color:var(--dim)}
+.sub-head button{font-size:11px;padding:5px 12px;border:1px solid var(--rule2);border-radius:6px;
+  background:none;cursor:pointer;color:var(--faint);font-family:var(--mono);transition:.15s}
+.sub-head button:hover{color:var(--loss);border-color:var(--loss)}
+
+@media(max-width:760px){
+  .wrap{padding:12px}
+  .topbar{padding:10px 12px}
+  .brand small,.chip.age{display:none}
+  .hide-m{display:none}
+  .stat-v{font-size:17px}
+  .stat{min-width:88px;padding:10px 12px}
+  .search-wrap{width:100%;margin-left:0}
+  .search-wrap input{width:100%}
+  .range-row input[type=number]{width:60px}
+  .tbl thead{display:none}
+  .tbl tbody tr{display:block;padding:11px 13px;margin-bottom:8px;background:var(--panel);
+    border-radius:9px;border:1px solid var(--rule2)!important}
+  .tbl tbody td{display:block;padding:2px 0;border:none!important;white-space:normal}
+  .tbl tbody td.r{text-align:left}
+  .div-col{display:none}
+  .m-row{display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .m-lab{font-size:10px;color:var(--faint);text-transform:uppercase;letter-spacing:.07em}
+}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <span class="dot"></span>
+    <div><b>ARB SCANNER</b><small>спот · пары к USDT</small></div>
+  </div>
+  <div class="top-right">
+    <span class="chip age" id="age">—</span>
+    <span class="chip" id="tier">—</span>
+    <button class="rbtn" id="rbtn" onclick="pull(true)">
+      <span class="ico">⟳</span><span class="spin">↻</span> обновить
+    </button>
+    <a href="/cabinet" title="Личный кабинет"><img class="avatar" id="ava" alt="" style="display:none"></a>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="tab('scan',this)">Сканер</button>
+    <button class="tab-btn" onclick="tab('fav',this)">Избранное <span id="fav-n"></span></button>
+    <button class="tab-btn" onclick="tab('hist',this)">История <span id="hist-n"></span></button>
+  </div>
+
+  <!-- СКАНЕР -->
+  <div id="tab-scan" class="tab-panel active">
+    <div class="stats">
+      <div class="stat"><div class="stat-l">Спредов</div><div class="stat-v" id="s-total">—</div></div>
+      <div class="stat"><div class="stat-l">Лучший</div><div class="stat-v g" id="s-best">—</div></div>
+      <div class="stat"><div class="stat-l">Пар проверено</div><div class="stat-v" id="s-pairs">—</div></div>
+      <div class="stat"><div class="stat-l">Биржи</div><div class="stat-v" id="s-ex">—</div></div>
+      <div class="stat"><div class="stat-l">Выше 1%</div><div class="stat-v g" id="s-hot">—</div></div>
+    </div>
+
+    <div id="upsell-slot"></div>
+    <div class="exrow" id="exrow"></div>
+
+    <div class="controls">
+      <button class="fb active" onclick="filt('all',this)">Все</button>
+      <button class="fb" onclick="filt('bigvol',this)">Объём &gt; $1M</button>
+      <button class="fb" onclick="filt('fav',this)">★ Избранные</button>
+      <div class="search-wrap">
+        <input id="q" placeholder="поиск: BTC, SOL, PEPE…" oninput="render()">
+      </div>
+    </div>
+
+    <div class="range-row">
+      <span class="rr-l">Спред от</span>
+      <input type="number" id="smin" min="0" step="0.1" value="0" oninput="render()">
+      <span class="rr-l">до</span>
+      <input type="number" id="smax" min="0" step="0.1" value="50" oninput="render()">
+      <span class="rr-l">%</span>
+      <button class="rr-reset" onclick="smin.value=0;smax.value=50;render()">сбросить</button>
+      <span class="rr-sep"></span>
+      <span class="rr-l">Объём от</span>
+      <input type="number" id="vmin" min="0" step="1000" value="0" oninput="render()" style="width:98px">
+      <span class="rr-l">до</span>
+      <input type="number" id="vmax" min="0" step="1000" placeholder="∞" oninput="render()" style="width:98px">
+      <span class="rr-l">$</span>
+      <button class="rr-reset" onclick="vmin.value=0;vmax.value='';render()">сбросить</button>
+    </div>
+
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead><tr>
+          <th>#</th><th style="width:26px"></th><th>Монета</th>
+          <th>Купить</th><th class="r">Цена</th>
+          <th class="div-col"></th>
+          <th>Продать</th><th class="r">Цена</th>
+          <th class="div-col"></th>
+          <th class="r">Спред</th>
+          <th class="r hide-m">Объём 24ч</th>
+          <th class="r hide-m">Изм. 24ч</th>
+          <th class="r hide-m">Профит с $<input type="number" id="base" value="1000" min="1" step="100"
+            oninput="render()" style="width:66px;background:var(--panel2);border:1px solid var(--rule2);
+            color:var(--txt);font-family:var(--mono);font-size:11px;font-weight:700;padding:2px 5px;
+            border-radius:4px;text-align:right;outline:none;-moz-appearance:textfield"></th>
+        </tr></thead>
+        <tbody id="tb"><tr class="msg"><td colspan="13"><span class="blink">●</span> загружаем спреды…</td></tr></tbody>
+      </table>
+    </div>
+
+    <div class="foot">
+      <span id="lu">—</span>
+      <span id="note">спред &gt; 0.15% · без учёта комиссий биржи и сети</span>
+    </div>
+  </div>
+
+  <!-- ИЗБРАННОЕ -->
+  <div id="tab-fav" class="tab-panel">
+    <div class="sub-head">
+      <span id="fav-c">0 монет</span>
+      <button onclick="clearFav()">очистить</button>
+    </div>
+    <div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th style="width:26px"></th><th>Монета</th><th>Купить</th><th class="r">Цена</th>
+        <th>Продать</th><th class="r">Цена</th><th class="r">Спред</th><th class="r">Объём</th><th class="r">Изм. 24ч</th></tr></thead>
+      <tbody id="fav-tb"><tr class="msg"><td colspan="9">Пусто. Нажмите ★ рядом с монетой в сканере.</td></tr></tbody>
+    </table></div>
+  </div>
+
+  <!-- ИСТОРИЯ -->
+  <div id="tab-hist" class="tab-panel">
+    <div class="sub-head">
+      <span id="hist-c">0 записей</span>
+      <button onclick="clearHist()">очистить историю</button>
+    </div>
+    <div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th>Время</th><th style="width:26px"></th><th>Монета</th><th>Маршрут</th>
+        <th class="r">Спред был</th><th>Действие</th></tr></thead>
+      <tbody id="hist-tb"><tr class="msg"><td colspan="6">Пусто. Записи появятся, когда откроете биржу или монету.</td></tr></tbody>
+    </table></div>
+  </div>
+
+</div>
+
+<div class="tip" id="tip"></div>
+
+<script>
+const $ = s => document.getElementById(s);
+let ME = {}, DATA = {spreads:[], routes:{}, status:{}}, FILTER = 'all';
+let favorites = new Set(), history = [], busy = false;
+
+/* ── справочники приходят с сервера ───────────────────── */
+async function boot() {
+  ME = await (await fetch('/api/me')).json();
+  $('tier').textContent = ME.tier_name || 'Свободный';
+  $('tier').className = 'chip' + (ME.tier === 'pro' ? ' tier-pro' : ME.tier === 'vip' ? ' tier-vip' : '');
+  if (ME.picture) { $('ava').src = ME.picture; $('ava').style.display = 'block'; }
+
+  if (ME.logged_in) {
+    try {
+      const f = await (await fetch('/api/favorites')).json();
+      favorites = new Set(f.favorites || []);
+    } catch {}
+  } else {
+    favorites = new Set(JSON.parse(localStorage.getItem('arb_favs') || '[]'));
+  }
+  history = JSON.parse(localStorage.getItem('arb_hist') || '[]');
+
+  if (ME.tier === 'free' && ME.auth_enabled) {
+    $('upsell-slot').innerHTML =
+      `<div class="upsell"><span><b>Вы на свободном тарифе.</b> Данные приходят с задержкой
+       ${ME.limits.delay} секунд, доступно 5 бирж из ${Object.keys(ME.exchanges).length}.</span>
+       <a href="/cabinet">Открыть все биржи</a></div>`;
+  }
+  paintFavCount(); renderHist();
+  pull();
+  setInterval(pull, 9000);
+}
+
+/* ── данные ──────────────────────────────────────────── */
+async function pull(manual) {
+  if (busy) return;
+  busy = true;
+  if (manual) $('rbtn').classList.add('loading');
+  const y = window.scrollY;
+  try {
+    const d = await (await fetch('/api/spreads')).json();
+    if (d.loading) { busy = false; $('rbtn').classList.remove('loading'); return; }
+    DATA = d;
+
+    $('s-total').textContent = d.spreads.length + (d.truncated ? '+' : '');
+    $('s-best').textContent  = d.spreads[0] ? d.spreads[0].s.toFixed(2) + '%' : '0%';
+    $('s-pairs').textContent = (d.pairs || 0).toLocaleString('ru-RU');
+    $('s-ex').textContent    = d.online + '/' + Object.keys(ME.exchanges || {}).length;
+    $('s-hot').textContent   = d.hot || 0;
+    $('age').textContent     = d.delay ? `задержка ${d.delay}с` : `данные ${d.age}с назад`;
+    $('lu').textContent      = 'обновлено в ' + new Date(d.ts * 1000).toLocaleTimeString('ru-RU');
+    $('note').textContent    = d.truncated
+      ? `показано ${d.spreads.length}, скрыто ещё ${d.truncated} — доступно на Pro`
+      : 'спред > 0.15% · без учёта комиссий биржи и сети';
+
+    paintExchanges();
+    render(); renderFav();
+    window.scrollTo({top:y, behavior:'instant'});
+  } catch (e) {
+    console.error(e);
+  }
+  busy = false;
+  $('rbtn').classList.remove('loading');
+}
+
+function paintExchanges() {
+  const free = new Set(ME.free_exchanges || []);
+  $('exrow').innerHTML = Object.entries(ME.exchanges || {}).map(([id, name]) => {
+    const st = DATA.status[id];
+    const locked = ME.tier === 'free' && !free.has(id);
+    const cls = locked ? 'locked' : st === 'ok' ? 'ok' : st === 'err' ? 'err' : '';
+    return `<span class="exb ${cls}" title="${locked ? 'доступно на Pro' : ''}">
+      <span class="d"></span>${name}${locked ? ' 🔒' : ''}</span>`;
+  }).join('');
+}
+
+/* ── таблица ─────────────────────────────────────────── */
+function fmtP(p){
+  if(!p||isNaN(p))return '—';
+  if(p<1e-6)return p.toExponential(2);
+  if(p<1e-3)return p.toFixed(6);
+  if(p<0.1)return p.toFixed(4);
+  if(p<10)return p.toFixed(3);
+  if(p<1000)return p.toFixed(2);
+  return p.toLocaleString('ru-RU',{maximumFractionDigits:2});
+}
+function fmtV(v){
+  if(!v||v<=0)return '<span style="color:var(--faint)">—</span>';
+  const c = v>=5e5 ? 'var(--warn)' : 'var(--dim)';
+  const s = v>=1e9?'$'+(v/1e9).toFixed(1)+'B' : v>=1e6?'$'+(v/1e6).toFixed(1)+'M'
+          : v>=1e3?'$'+(v/1e3).toFixed(0)+'K' : '$'+v.toFixed(0);
+  return `<span style="color:${c};font-weight:${v>=5e5?700:600}">${s}</span>`;
+}
+function fmtC(v){
+  if(v===undefined||v===null||!v)return '<span style="color:var(--faint)">—</span>';
+  const c = v>0?'var(--gain)':'var(--loss)';
+  return `<span style="color:${c};font-weight:700">${v>0?'+':''}${v.toFixed(2)}%</span>`;
+}
+const exName = id => (ME.exchanges || {})[id] || id;
+const isApprox = id => (ME.approx || []).includes(id);
+// «~» значит: биржа не отдаёт стакан массово, цена взята как последняя сделка.
+// Спред по такой паре — ориентир, проверяйте стакан руками.
+const exLabel = id => exName(id) + (isApprox(id)
+  ? '<span title="Биржа не отдаёт стакан — цена по последней сделке. Проверьте вручную." '
+    + 'style="color:var(--warn);font-weight:800;margin-left:3px;cursor:help">~</span>' : '');
+
+function apply(rows){
+  const q = $('q').value.trim().toUpperCase();
+  if(q) rows = rows.filter(r => r.c.includes(q));
+  if(FILTER === 'bigvol') rows = rows.filter(r => r.bv >= 1e6 || r.sv >= 1e6);
+  if(FILTER === 'fav')    rows = rows.filter(r => favorites.has(r.c));
+  const a = parseFloat($('smin').value) || 0;
+  const b = parseFloat($('smax').value) || 1e9;
+  rows = rows.filter(r => r.s >= a && r.s <= b);
+  const vmn = parseFloat($('vmin').value) || 0;
+  const vmxRaw = $('vmax').value;
+  const vmx = vmxRaw === '' || isNaN(parseFloat(vmxRaw)) ? Infinity : parseFloat(vmxRaw);
+  if(vmn > 0 || vmx < Infinity)
+    rows = rows.filter(r => { const v = (r.bv||0)+(r.sv||0); return v >= vmn && v <= vmx; });
+  return rows;
+}
+
+function render(){
+  const rows = apply(DATA.spreads || []);
+  const base = parseFloat($('base').value) || 1000;
+  const tb = $('tb');
+  if(!rows.length){ tb.innerHTML = '<tr class="msg"><td colspan="13">Ничего не подошло под фильтры.</td></tr>'; return; }
+
+  tb.innerHTML = rows.map((r,i) => {
+    const c = r.s>=1?'hot':r.s>=0.5?'warm':'cool';
+    return `<tr>
+      <td class="rn">${i+1}</td>
+      <td><button class="star ${favorites.has(r.c)?'on':''}" onclick="fav('${r.c}')"
+            aria-label="В избранное">★</button></td>
+      <td><span class="pair" onmouseenter="tip(event,'${r.c}')" onmouseleave="hideTip()"
+            onclick="openCoin('${r.c}',${r.s})">${r.c}<small>/USDT</small></span></td>
+      <td><span class="ex-name" onclick="openEx('${r.be}','${r.c}',${r.s},0)">${exLabel(r.be)}</span></td>
+      <td class="r price">${fmtP(r.bp)}</td>
+      <td class="div-col"></td>
+      <td><span class="ex-name" onclick="openEx('${r.se}','${r.c}',${r.s},1)">${exLabel(r.se)}</span></td>
+      <td class="r price">${fmtP(r.sp)}</td>
+      <td class="div-col"></td>
+      <td class="r"><span class="spread ${c}">${r.s.toFixed(3)}%</span></td>
+      <td class="r hide-m">${fmtV(r.bv)} / ${fmtV(r.sv)}</td>
+      <td class="r hide-m">${fmtC(r.ch)}</td>
+      <td class="r profit hide-m">+$${(base*r.s/100).toFixed(2)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function filt(f, btn){
+  FILTER = f;
+  document.querySelectorAll('.fb').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  render();
+}
+
+/* ── подсказка со всеми маршрутами ───────────────────── */
+function tip(e, coin){
+  const list = (DATA.routes || {})[coin];
+  const t = $('tip');
+  if(!list || !list.length){ t.style.display = 'none'; return; }
+  t.innerHTML = `<div class="tip-t">${coin}/USDT · все маршруты</div>` +
+    list.map(([be,se,s]) => {
+      const c = s>=1?'var(--gain)':s>=0.5?'var(--warn)':'var(--dim)';
+      return `<div class="tip-r"><span><b>${exLabel(be)}</b> → <b>${exLabel(se)}</b></span>
+              <span class="tip-s" style="color:${c}">+${s.toFixed(3)}%</span></div>`;
+    }).join('');
+  t.style.display = 'block';
+  moveTip(e);
+}
+function moveTip(e){
+  const t = $('tip');
+  if(t.style.display === 'none') return;
+  const x = e.clientX + 15, y = e.clientY - 10;
+  const w = t.offsetWidth, h = t.offsetHeight;
+  t.style.left = (x + w > innerWidth ? x - w - 25 : x) + 'px';
+  t.style.top  = (y + h > innerHeight ? Math.max(8, y - h) : y) + 'px';
+}
+function hideTip(){ $('tip').style.display = 'none'; }
+addEventListener('mousemove', moveTip);
+
+/* ── переходы ────────────────────────────────────────── */
+function tradeUrl(ex, coin){
+  const t = (ME.trade_urls || {})[ex];
+  return t ? t.replace('{c}', coin).replace('{cl}', coin.toLowerCase()) : null;
+}
+function openEx(ex, coin, spread, isSell){
+  const u = tradeUrl(ex, coin);
+  if(u) open(u, '_blank');
+  const r = (DATA.spreads || []).find(x => x.c === coin);
+  logHist(coin, r ? exName(r.be) : '', r ? exName(r.se) : '', spread, isSell ? 'продать' : 'купить');
+}
+function openCoin(coin, spread){
+  open('https://cryptorank.io/price/' + coin.toLowerCase(), '_blank');
+  const r = (DATA.spreads || []).find(x => x.c === coin);
+  logHist(coin, r ? exName(r.be) : '', r ? exName(r.se) : '', spread, 'инфо');
+}
+
+/* ── избранное ───────────────────────────────────────── */
+async function fav(coin){
+  const add = !favorites.has(coin);
+  add ? favorites.add(coin) : favorites.delete(coin);
+  paintFavCount(); render(); renderFav();
+  if(ME.logged_in){
+    try{ await fetch('/api/favorites',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({coin, add})}); }catch{}
+  } else {
+    localStorage.setItem('arb_favs', JSON.stringify([...favorites]));
+  }
+}
+function paintFavCount(){
+  const n = favorites.size;
+  $('fav-n').textContent = n ? `(${n})` : '';
+  $('fav-c').textContent = n + ' монет';
+}
+function renderFav(){
+  const tb = $('fav-tb');
+  if(!favorites.size){
+    tb.innerHTML = '<tr class="msg"><td colspan="9">Пусто. Нажмите ★ рядом с монетой в сканере.</td></tr>';
+    return;
+  }
+  const rows = [...favorites].map(c => (DATA.spreads || []).find(r => r.c === c) || {c, s:null});
+  tb.innerHTML = rows.map(r => {
+    if(r.s === null) return `<tr>
+      <td><button class="star on" onclick="fav('${r.c}')">★</button></td>
+      <td><span class="pair" onclick="openCoin('${r.c}',0)">${r.c}<small>/USDT</small></span></td>
+      <td colspan="7" style="color:var(--faint);font-size:12px">сейчас спреда выше 0.15% нет</td></tr>`;
+    const c = r.s>=1?'hot':r.s>=0.5?'warm':'cool';
+    return `<tr>
+      <td><button class="star on" onclick="fav('${r.c}')">★</button></td>
+      <td><span class="pair" onmouseenter="tip(event,'${r.c}')" onmouseleave="hideTip()"
+            onclick="openCoin('${r.c}',${r.s})">${r.c}<small>/USDT</small></span></td>
+      <td><span class="ex-name" onclick="openEx('${r.be}','${r.c}',${r.s},0)">${exLabel(r.be)}</span></td>
+      <td class="r price">${fmtP(r.bp)}</td>
+      <td><span class="ex-name" onclick="openEx('${r.se}','${r.c}',${r.s},1)">${exLabel(r.se)}</span></td>
+      <td class="r price">${fmtP(r.sp)}</td>
+      <td class="r"><span class="spread ${c}">${r.s.toFixed(3)}%</span></td>
+      <td class="r">${fmtV(r.bv)}</td>
+      <td class="r">${fmtC(r.ch)}</td></tr>`;
+  }).join('');
+}
+async function clearFav(){
+  if(!confirm('Убрать все монеты из избранного?')) return;
+  for(const c of [...favorites]) await fav(c);
+}
+
+/* ── история ─────────────────────────────────────────── */
+function logHist(coin, be, se, s, type){
+  const now = new Date();
+  const rec = {t: now.toLocaleTimeString('ru-RU') + ' ' + now.toLocaleDateString('ru-RU'),
+               c: coin, be, se, s: s ? s.toFixed(3) : null, type};
+  if(history.length && history[0].c === coin) history[0] = rec;
+  else history.unshift(rec);
+  if(history.length > 200) history.pop();
+  localStorage.setItem('arb_hist', JSON.stringify(history));
+  renderHist();
+}
+function renderHist(){
+  $('hist-n').textContent = history.length ? `(${history.length})` : '';
+  $('hist-c').textContent = history.length + ' записей';
+  const tb = $('hist-tb');
+  if(!history.length){
+    tb.innerHTML = '<tr class="msg"><td colspan="6">Пусто. Записи появятся, когда откроете биржу или монету.</td></tr>';
+    return;
+  }
+  tb.innerHTML = history.map(e => `<tr>
+    <td style="font-size:11px;color:var(--faint)">${e.t}</td>
+    <td><button class="star ${favorites.has(e.c)?'on':''}" onclick="fav('${e.c}')">★</button></td>
+    <td><span class="pair" onmouseenter="tip(event,'${e.c}')" onmouseleave="hideTip()"
+          onclick="openCoin('${e.c}',0)">${e.c}<small>/USDT</small></span></td>
+    <td style="font-size:12px;color:var(--dim)">${e.be && e.se
+        ? `<b style="color:var(--accent)">${e.be}</b> → <b style="color:var(--accent)">${e.se}</b>`
+        : '<span style="color:var(--faint)">—</span>'}</td>
+    <td class="r">${e.s ? `<span style="color:var(--gain);font-weight:700">+${e.s}%</span>`
+        : '<span style="color:var(--faint)">—</span>'}</td>
+    <td style="font-size:11px;color:var(--faint)">${e.type}</td></tr>`).join('');
+}
+function clearHist(){
+  if(!confirm('Очистить всю историю?')) return;
+  history = []; localStorage.setItem('arb_hist','[]'); renderHist();
+}
+
+function tab(name, btn){
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  $('tab-' + name).classList.add('active');
+  btn.classList.add('active');
+}
+
+boot();
+</script>
+</body>
+</html>
