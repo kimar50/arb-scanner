@@ -561,7 +561,15 @@ def init_db():
         """)
 
 
+# Подписки временно отключены — все залогиненные пользователи получают
+# полный доступ, как будто у них VIP. Тарифы и оплата остаются в коде,
+# просто эта строка решает, что выдавать по умолчанию.
+SUBSCRIPTIONS_PAUSED = True
+
+
 def user_tier(u) -> str:
+    if SUBSCRIPTIONS_PAUSED:
+        return "vip" if u else "free"
     if not u:
         return "free"
     if u["tier"] in ("pro", "vip") and u["tier_until"] > time.time():

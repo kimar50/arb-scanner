@@ -312,10 +312,7 @@ async function boot() {
   history = JSON.parse(localStorage.getItem('arb_hist') || '[]');
 
   if (ME.tier === 'free' && ME.auth_enabled) {
-    $('upsell-slot').innerHTML =
-      `<div class="upsell"><span><b>Вы на свободном тарифе.</b> Данные приходят с задержкой
-       ${ME.limits.delay} секунд, доступно 5 бирж из ${Object.keys(ME.exchanges).length}.</span>
-       <a href="/cabinet">Открыть все биржи</a></div>`;
+    // подписки временно на паузе — баннер про Pro пока не показываем
   }
   paintFavCount(); renderHist();
   pull();
