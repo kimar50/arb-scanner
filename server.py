@@ -619,9 +619,9 @@ def current_user(request):
 # Страницы
 # ─────────────────────────────────────────────────────────────────────────────
 def page(name: str):
-    f = STATIC_DIR / name
+    f = BASE_DIR / name
     if not f.exists():
-        return web.Response(status=404, text=f"нет файла static/{name}")
+        return web.Response(status=404, text=f"нет файла {name}")
     return web.Response(text=f.read_text(encoding="utf-8"), content_type="text/html")
 
 
