@@ -99,12 +99,13 @@ a{color:inherit;text-decoration:none}
 
 .tbl-wrap{overflow-x:auto}
 .tbl{width:100%;border-collapse:collapse}
-.tbl thead th{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--dim);
-  padding:18px 12px;text-align:left;border-bottom:2px solid var(--rule2);white-space:nowrap;
-  font-weight:600;background:var(--panel2);position:sticky;top:57px;z-index:5;
-  box-shadow:0 4px 10px -4px rgba(0,0,0,.55)}
+.tbl thead th{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--txt);
+  padding:16px 12px;text-align:left;border-bottom:3px solid var(--accent);white-space:nowrap;
+  font-weight:800;background:var(--raise);position:static}
+.tbl thead th:first-child{border-top-left-radius:8px}
+.tbl thead th:last-child{border-top-right-radius:8px}
 .tbl thead th.r{text-align:right}
-.tbl tbody tr:first-child td{padding-top:16px}
+.tbl tbody tr:first-child td{padding-top:18px}
 .tbl tbody tr{border-bottom:1px solid var(--rule);transition:background .12s}
 .tbl tbody tr:hover{background:var(--panel)}
 .tbl tbody td{padding:11px 12px;vertical-align:middle;white-space:nowrap}
@@ -211,28 +212,28 @@ a{color:inherit;text-decoration:none}
     <div class="exrow" id="exrow"></div>
 
     <div class="controls">
-      <button class="fb active" onclick="filt('all',this)">Все</button>
-      <button class="fb" onclick="filt('bigvol',this)">Объём &gt; $1M</button>
-      <button class="fb" onclick="filt('fav',this)">★ Избранные</button>
+      <button class="fb active" onclick="resetShow();filt('all',this)">Все</button>
+      <button class="fb" onclick="resetShow();filt('bigvol',this)">Объём &gt; $1M</button>
+      <button class="fb" onclick="resetShow();filt('fav',this)">★ Избранные</button>
       <div class="search-wrap">
-        <input id="q" placeholder="поиск: BTC, SOL, PEPE…" oninput="render()">
+        <input id="q" placeholder="поиск: BTC, SOL, PEPE…" oninput="resetShow();render()">
       </div>
     </div>
 
     <div class="range-row">
       <span class="rr-l">Спред от</span>
-      <input type="number" id="smin" min="0" step="0.1" value="0" oninput="render()">
+      <input type="number" id="smin" min="0" step="0.1" value="0" oninput="resetShow();render()">
       <span class="rr-l">до</span>
-      <input type="number" id="smax" min="0" step="0.1" value="50" oninput="render()">
+      <input type="number" id="smax" min="0" step="0.1" value="50" oninput="resetShow();render()">
       <span class="rr-l">%</span>
-      <button class="rr-reset" onclick="smin.value=0;smax.value=50;render()">сбросить</button>
+      <button class="rr-reset" onclick="smin.value=0;smax.value=50;resetShow();render()">сбросить</button>
       <span class="rr-sep"></span>
       <span class="rr-l">Объём от</span>
-      <input type="number" id="vmin" min="0" step="1000" value="0" oninput="render()" style="width:98px">
+      <input type="number" id="vmin" min="0" step="1000" value="0" oninput="resetShow();render()" style="width:98px">
       <span class="rr-l">до</span>
-      <input type="number" id="vmax" min="0" step="1000" placeholder="∞" oninput="render()" style="width:98px">
+      <input type="number" id="vmax" min="0" step="1000" placeholder="∞" oninput="resetShow();render()" style="width:98px">
       <span class="rr-l">$</span>
-      <button class="rr-reset" onclick="vmin.value=0;vmax.value='';render()">сбросить</button>
+      <button class="rr-reset" onclick="vmin.value=0;vmax.value='';resetShow();render()">сбросить</button>
     </div>
 
     <div class="tbl-wrap">
@@ -295,6 +296,9 @@ a{color:inherit;text-decoration:none}
 const $ = s => document.getElementById(s);
 let ME = {}, DATA = {spreads:[], routes:{}, status:{}}, FILTER = 'all';
 let favorites = new Set(), history = [], busy = false;
+let SHOW_LIMIT = 50;
+function resetShow(){ SHOW_LIMIT = 50; }
+function showMore(){ SHOW_LIMIT += 50; render(); }
 
 /* ── справочники приходят с сервера ───────────────────── */
 async function boot() {
@@ -416,7 +420,8 @@ function render(){
   const tb = $('tb');
   if(!rows.length){ tb.innerHTML = '<tr class="msg"><td colspan="13">Ничего не подошло под фильтры.</td></tr>'; return; }
 
-  tb.innerHTML = rows.map((r,i) => {
+  const shown = rows.slice(0, SHOW_LIMIT);
+  let html = shown.map((r,i) => {
     const c = r.s>=1?'hot':r.s>=0.5?'warm':'cool';
     return `<tr>
       <td class="rn">${i+1}</td>
@@ -436,6 +441,14 @@ function render(){
       <td class="r profit hide-m">+$${(base*r.s/100).toFixed(2)}</td>
     </tr>`;
   }).join('');
+
+  if (rows.length > SHOW_LIMIT) {
+    html += `<tr class="msg"><td colspan="13" style="padding:16px;text-align:center">
+      <button class="rr-reset" style="padding:8px 20px;font-size:12px" onclick="showMore()">
+        Показано ${shown.length} из ${rows.length} · показать ещё ${Math.min(50, rows.length - shown.length)}
+      </button></td></tr>`;
+  }
+  tb.innerHTML = html;
 }
 
 function filt(f, btn){
