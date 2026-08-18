@@ -78,7 +78,7 @@ a{color:inherit;text-decoration:none}
   background:none;cursor:pointer;color:var(--dim);font-family:var(--mono);transition:.15s}
 .fb:hover{border-color:var(--accent);color:var(--accent)}
 .fb.active{background:var(--accent);color:#04101f;border-color:var(--accent);font-weight:700}
-.search-wrap{margin-left:auto}
+.search-wrap{width:220px}
 .search-wrap input{background:var(--panel2);border:1px solid var(--rule2);color:var(--txt);
   padding:6px 12px;border-radius:6px;font-family:var(--mono);font-size:12px;width:210px;outline:none}
 .search-wrap input:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(77,166,255,.14)}
@@ -176,10 +176,10 @@ a{color:inherit;text-decoration:none}
 <body>
 
 <div class="topbar">
-  <div class="brand">
+  <a class="brand" href="/" style="text-decoration:none;cursor:pointer">
     <span class="dot"></span>
     <div><b>ARB SCREENER</b><small>спот · пары к USDT</small></div>
-  </div>
+  </a>
   <div class="top-right">
     <span class="chip age" id="age">—</span>
     <span class="chip" id="tier">—</span>
@@ -211,16 +211,11 @@ a{color:inherit;text-decoration:none}
     <div id="upsell-slot"></div>
     <div class="exrow" id="exrow"></div>
 
-    <div class="controls">
-      <button class="fb active" onclick="resetShow();filt('all',this)">Все</button>
-      <button class="fb" onclick="resetShow();filt('bigvol',this)">Объём &gt; $1M</button>
-      <button class="fb" onclick="resetShow();filt('fav',this)">★ Избранные</button>
+    <div class="range-row">
       <div class="search-wrap">
         <input id="q" placeholder="поиск: BTC, SOL, PEPE…" oninput="resetShow();render()">
       </div>
-    </div>
-
-    <div class="range-row">
+      <span class="rr-sep"></span>
       <span class="rr-l">Спред от</span>
       <input type="number" id="smin" min="0" step="0.1" value="0" oninput="resetShow();render()">
       <span class="rr-l">до</span>
