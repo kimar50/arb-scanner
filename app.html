@@ -178,7 +178,7 @@ a{color:inherit;text-decoration:none}
 <div class="topbar">
   <div class="brand">
     <span class="dot"></span>
-    <div><b>ARB SCANNER</b><small>спот · пары к USDT</small></div>
+    <div><b>ARB SCREENER</b><small>спот · пары к USDT</small></div>
   </div>
   <div class="top-right">
     <span class="chip age" id="age">—</span>
@@ -271,7 +271,7 @@ a{color:inherit;text-decoration:none}
     <div class="tbl-wrap"><table class="tbl">
       <thead><tr><th style="width:26px"></th><th>Монета</th><th>Купить</th><th class="r">Цена</th>
         <th>Продать</th><th class="r">Цена</th><th class="r">Спред</th><th class="r">Объём</th><th class="r">Изм. 24ч</th></tr></thead>
-      <tbody id="fav-tb"><tr class="msg"><td colspan="9">Пусто. Нажмите ★ рядом с монетой в сканере.</td></tr></tbody>
+      <tbody id="fav-tb"><tr class="msg"><td colspan="9">Пусто. Нажмите ★ рядом с монетой в скринере.</td></tr></tbody>
     </table></div>
   </div>
 
@@ -520,7 +520,7 @@ function paintFavCount(){
 function renderFav(){
   const tb = $('fav-tb');
   if(!favorites.size){
-    tb.innerHTML = '<tr class="msg"><td colspan="9">Пусто. Нажмите ★ рядом с монетой в сканере.</td></tr>';
+    tb.innerHTML = '<tr class="msg"><td colspan="9">Пусто. Нажмите ★ рядом с монетой в скринере.</td></tr>';
     return;
   }
   const rows = [...favorites].map(c => (DATA.spreads || []).find(r => r.c === c) || {c, s:null});

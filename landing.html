@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ARB — сканер крипто-арбитража между биржами</title>
+<title>ARB — скринер крипто-арбитража между биржами</title>
 <meta name="description" content="Живые спреды между 19 CEX-биржами, доступными из России. Купить дешевле, продать дороже — видно сразу.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -63,12 +63,39 @@ a{color:inherit;text-decoration:none}
   color:var(--faint);margin-bottom:22px;
 }
 h1{
-  font-size:clamp(30px,4.4vw,52px);font-weight:800;line-height:1.08;
-  letter-spacing:-.02em;margin-bottom:20px;
+  font-size:clamp(34px,5.2vw,64px);font-weight:800;line-height:1.06;
+  letter-spacing:-.025em;margin-bottom:20px;
 }
 h1 .g{color:var(--gain)}
 h1 .thin{font-weight:400;color:var(--dim)}
 .lede{color:var(--dim);font-size:15px;max-width:44ch;margin-bottom:34px}
+
+/* ── вращающаяся градиентная рамка (фирменный приём) ──── */
+.spin-border{position:relative;border-radius:14px;isolation:isolate}
+.spin-border::before{
+  content:'';position:absolute;inset:-1px;border-radius:inherit;padding:1px;z-index:-2;
+  background:conic-gradient(from var(--sb-angle,0deg),
+    transparent 0deg, var(--accent) 60deg, transparent 130deg,
+    var(--gain) 230deg, transparent 300deg, transparent 360deg);
+  animation:sbspin 6s linear infinite;
+}
+.spin-border::after{
+  content:'';position:absolute;inset:1px;border-radius:13px;background:var(--panel);z-index:-1;
+}
+@property --sb-angle{syntax:'<angle>';inherits:false;initial-value:0deg}
+@keyframes sbspin{to{--sb-angle:360deg}}
+@media (prefers-reduced-motion:reduce){.spin-border::before{animation:none}}
+
+/* ── бегущая строка бирж ─────────────────────────────── */
+.marquee{overflow:hidden;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);
+  padding:16px 0;margin:8px auto 0;max-width:1240px;-webkit-mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent);
+  mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)}
+.marquee-track{display:flex;gap:36px;width:max-content;animation:mscroll 32s linear infinite}
+.marquee-track span{font-size:12px;letter-spacing:.1em;color:var(--faint);white-space:nowrap;
+  display:flex;align-items:center;gap:8px}
+.marquee-track span::before{content:'';width:4px;height:4px;border-radius:50%;background:var(--gain);flex:none}
+@keyframes mscroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+@media (prefers-reduced-motion:reduce){.marquee-track{animation:none}}
 
 /* сигнатурный элемент: живая лента спредов */
 .board{
@@ -220,7 +247,7 @@ footer{
       можно купить дешевле, чем её же продают в этот момент на другой площадке.
     </p>
 
-    <div class="board">
+    <div class="board spin-border">
       <div class="board-top">
         <span>Спреды прямо сейчас</span>
         <span class="live"><span class="pulse"></span>в эфире</span>
@@ -233,9 +260,9 @@ footer{
     </div>
   </div>
 
-  <div class="card">
+  <div class="card spin-border">
     <div id="err-slot"></div>
-    <h2>Вход в сканер</h2>
+    <h2>Вход в скринер</h2>
     <p class="sub">Аккаунт нужен, чтобы хранить избранное и историю. Пароль придумывать не придётся.</p>
 
     <a class="gbtn" href="/auth/google">
@@ -259,6 +286,10 @@ footer{
       Сканер показывает разницу цен. Он не торгует за вас и не хранит ваши ключи от бирж.
     </p>
   </div>
+</div>
+
+<div class="marquee">
+  <div class="marquee-track" id="marquee-track"></div>
 </div>
 
 <section id="how">
@@ -330,7 +361,7 @@ footer{
       <div class="price">2 490 ₽<small> / месяц</small></div>
       <ul>
         <li><i>✓</i> Всё из Pro</li>
-        <li><i>✓</i> Доступ к API сканера</li>
+        <li><i>✓</i> Доступ к API скринера</li>
         <li><i>✓</i> Приоритетная поддержка</li>
         <li><i>✓</i> Ранний доступ к новым биржам</li>
       </ul>
@@ -343,7 +374,7 @@ footer{
 <section id="how2">
   <div class="sec-head">
     <div class="eyebrow">Статус</div>
-    <h2>Сейчас сканер полностью бесплатный</h2>
+    <h2>Сейчас скринер полностью бесплатный</h2>
     <p>Все 19 бирж, без задержки данных, без ограничений по строкам. Тарифы появятся позже — войдите и пользуйтесь.</p>
   </div>
 </section>
@@ -356,7 +387,7 @@ footer{
 </div>
 
 <footer>
-  <span>ARB · сканер крипто-арбитража</span>
+  <span>ARB · скринер крипто-арбитража</span>
   <span id="foot-r"></span>
 </footer>
 
@@ -375,6 +406,10 @@ const FREE = ['Bybit','KuCoin','Gate.io','MEXC','OKX'];
 
 $('#ex-grid').innerHTML = EX_NAMES.map(n =>
   `<span class="ex-chip ${FREE.includes(n) ? 'on' : ''}">${n}</span>`).join('');
+
+const marqueeItems = [...EX_NAMES, ...EX_NAMES]
+  .map(n => `<span>${n}</span>`).join('');
+$('#marquee-track').innerHTML = marqueeItems;
 
 let idx = 0, rows = [];
 
