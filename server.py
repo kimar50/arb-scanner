@@ -631,6 +631,10 @@ async def h_landing(request):
     return page("landing.html")
 
 
+async def h_privacy(request):
+    return page("privacy.html")
+
+
 async def h_app(request):
     if AUTH_ENABLED and not current_user(request):
         raise web.HTTPFound("/")
@@ -930,6 +934,7 @@ def build_app():
     app = web.Application()
     app.add_routes([
         web.get("/", h_landing),
+        web.get("/privacy", h_privacy),
         web.get("/app", h_app),
         web.get("/cabinet", h_cabinet),
 
