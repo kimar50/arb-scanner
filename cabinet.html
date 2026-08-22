@@ -100,18 +100,22 @@ h1{font-size:24px;font-weight:800;letter-spacing:-.02em;margin-bottom:6px}
   .topbar{padding:11px 14px}
 }
 </style>
-<!-- Yandex.Metrika counter -->
-<script type="text/javascript">
-   (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
-   m[i].l=1*new Date();
-   for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
-   k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
-   (window, document, "script", "https://mc.yandex.ru/metrika/tag.js?id=111859137", "ym");
-
-   ym(111859137, "init", {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
-</script>
-<noscript><div><img src="https://mc.yandex.ru/watch/111859137" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
-<!-- /Yandex.Metrika counter -->
+<style>
+#cookie-bar{position:fixed;left:0;right:0;bottom:0;z-index:999;
+  background:var(--panel2);border-top:1px solid var(--rule2);
+  padding:16px 20px;display:none;align-items:center;gap:18px;flex-wrap:wrap;
+  font-family:var(--mono);box-shadow:0 -8px 24px -8px rgba(0,0,0,.5)}
+#cookie-bar.show{display:flex}
+#cookie-bar p{margin:0;color:var(--dim);font-size:12.5px;line-height:1.5;flex:1;min-width:240px}
+#cookie-bar b{color:var(--txt)}
+#cookie-bar .cb-actions{display:flex;gap:10px;flex:none}
+#cookie-bar button{font-family:inherit;font-size:12px;padding:9px 18px;border-radius:6px;cursor:pointer;
+  border:1px solid var(--rule2);background:transparent;color:var(--dim);transition:.15s}
+#cookie-bar button.accept{background:var(--accent);border-color:var(--accent);color:#04101f;font-weight:700}
+#cookie-bar button.accept:hover{filter:brightness(1.1)}
+#cookie-bar button.decline:hover{color:var(--txt);border-color:var(--dim)}
+@media (max-width:560px){#cookie-bar{padding:14px}}
+</style>
 </head>
 <body>
 
@@ -255,6 +259,43 @@ async function order(plan){
 }
 
 boot();
+</script>
+<div id="cookie-bar">
+  <p>Мы используем файлы <b>cookie</b> и сервисы аналитики (Яндекс.Метрика) для улучшения работы сайта. Продолжая пользоваться сайтом, вы соглашаетесь с их использованием.</p>
+  <div class="cb-actions">
+    <button class="decline" onclick="declineCookies()">Отклонить</button>
+    <button class="accept" onclick="acceptCookies()">Принять</button>
+  </div>
+</div>
+<script>
+function loadYandexMetrika(){
+  if(window.__ymLoaded) return; window.__ymLoaded = true;
+  (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+  m[i].l=1*new Date();
+  for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+  k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+  (window, document, "script", "https://mc.yandex.ru/metrika/tag.js?id=111859137", "ym");
+  ym(111859137, "init", {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+}
+function acceptCookies(){
+  try{ localStorage.setItem('cookie_consent','accepted'); }catch(e){}
+  document.getElementById('cookie-bar').classList.remove('show');
+  loadYandexMetrika();
+}
+function declineCookies(){
+  try{ localStorage.setItem('cookie_consent','declined'); }catch(e){}
+  document.getElementById('cookie-bar').classList.remove('show');
+}
+(function(){
+  var consent = null;
+  try{ consent = localStorage.getItem('cookie_consent'); }catch(e){}
+  if(consent === 'accepted'){ loadYandexMetrika(); }
+  else if(consent !== 'declined'){
+    document.addEventListener('DOMContentLoaded', function(){
+      document.getElementById('cookie-bar').classList.add('show');
+    });
+  }
+})();
 </script>
 </body>
 </html>
